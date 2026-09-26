@@ -1,0 +1,32 @@
+<main class="ops">
+  <a class="back" routerLink="/portal">← Mis eventos</a>
+  <header>
+    <div>
+      <p class="eyebrow">POS VASO VERDE</p>
+      <h1>Selecciona tu punto de trabajo</h1>
+      <p>Accede a la operativa rápida de caja, vasos y albaranes.</p>
+    </div>
+    <mat-icon>point_of_sale</mat-icon>
+  </header>
+  <div class="grid">
+    <a
+      class="location"
+      *ngFor="let location of locations()"
+      [routerLink]="['/events', eventId, 'operate', location.id]"
+      ><div class="icon" [class.bar]="location.type === 'BAR'">
+        <mat-icon>{{ location.type === 'BAR' ? 'local_bar' : 'storefront' }}</mat-icon>
+      </div>
+      <div>
+        <span>{{ labels[location.type] || location.type }}</span>
+        <h2>{{ location.name }}</h2>
+        <small>{{ location.code }}</small>
+      </div>
+      <mat-icon class="arrow">arrow_forward</mat-icon
+      ><strong>{{ location.type === 'BAR' ? 'Gestionar vasos' : 'Abrir caja POS' }}</strong></a
+    >
+  </div>
+  <p class="empty" *ngIf="!loading() && !locations().length">
+    No tienes ubicaciones asignadas para este evento.
+  </p>
+  <p class="error" *ngIf="error()">{{ error() }}</p>
+</main>

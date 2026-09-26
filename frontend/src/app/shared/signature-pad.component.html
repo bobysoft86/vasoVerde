@@ -1,0 +1,12 @@
+<div class="pad-wrap">
+  <canvas
+    #canvas
+    width="640"
+    height="240"
+    (pointerdown)="start($event)"
+    (pointermove)="draw($event)"
+    (pointerup)="stop()"
+    (pointerleave)="stop()"
+  ></canvas
+  ><button mat-button type="button" (click)="clear()">Borrar y rehacer</button>
+</div>

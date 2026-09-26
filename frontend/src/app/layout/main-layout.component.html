@@ -1,0 +1,67 @@
+<mat-sidenav-container class="shell"
+  ><mat-sidenav
+    #sidenav
+    [mode]="isMobile() ? 'over' : 'side'"
+    [opened]="!isMobile()"
+    class="sidenav"
+    ><div class="brand"><span class="brand-mark">VV</span><span>Vaso Verde</span></div>
+    <nav>
+      <a
+        mat-button
+        routerLink="/dashboard"
+        *ngIf="isAdmin()"
+        routerLinkActive="active"
+        (click)="isMobile() && sidenav.close()"
+        ><mat-icon>dashboard</mat-icon> Dashboard</a
+      ><a
+        mat-button
+        routerLink="/portal"
+        routerLinkActive="active"
+        (click)="isMobile() && sidenav.close()"
+        ><mat-icon>assignment</mat-icon> Portal</a
+      ><a
+        mat-button
+        routerLink="/events"
+        routerLinkActive="active"
+        (click)="isMobile() && sidenav.close()"
+        ><mat-icon>event</mat-icon> Eventos</a
+      ><a
+        mat-button
+        routerLink="/warehouse"
+        routerLinkActive="active"
+        (click)="isMobile() && sidenav.close()"
+        *ngIf="isAdmin()"
+        ><mat-icon>warehouse</mat-icon> Nave central</a
+      ><a
+        mat-button
+        routerLink="/admin/cup-types"
+        routerLinkActive="active"
+        (click)="isMobile() && sidenav.close()"
+        *ngIf="isAdmin()"
+        ><mat-icon>local_drink</mat-icon> Tipos de vaso</a
+      ><a
+        mat-button
+        routerLink="/admin/users"
+        routerLinkActive="active"
+        (click)="isMobile() && sidenav.close()"
+        *ngIf="isAdmin()"
+        ><mat-icon>group</mat-icon> Usuarios</a
+      >
+    </nav>
+    <div class="nav-footer">Fase 5 · Stock y movimientos</div></mat-sidenav
+  ><mat-sidenav-content
+    ><mat-toolbar class="toolbar"
+      ><button mat-icon-button (click)="sidenav.toggle()" aria-label="Abrir navegación">
+        <mat-icon>menu</mat-icon></button
+      ><span class="toolbar-title">Panel de control</span><span class="spacer"></span
+      ><span class="user-label">{{ auth.currentUser()?.name }}</span
+      ><button mat-icon-button [matMenuTriggerFor]="profileMenu" aria-label="Cuenta">
+        <mat-icon>account_circle</mat-icon></button
+      ><mat-menu #profileMenu="matMenu"
+        ><button mat-menu-item (click)="logout()">
+          <mat-icon>logout</mat-icon><span>Cerrar sesión</span>
+        </button></mat-menu
+      ></mat-toolbar
+    >
+    <main class="content"><router-outlet /></main></mat-sidenav-content
+></mat-sidenav-container>

@@ -1,0 +1,47 @@
+<a class="back" [routerLink]="['..', 'overview']">← Dashboard del evento</a>
+<div class="head">
+  <div>
+    <p class="eyebrow">EQUIPO OPERATIVO</p>
+    <h2>Asignaciones por ubicación</h2>
+    <p>Una misma barra o caseta puede tener varios trabajadores y responsables.</p>
+  </div>
+</div>
+<mat-card class="form-card"
+  ><mat-form-field appearance="outline"
+    ><mat-label>Ubicación</mat-label
+    ><mat-select [(ngModel)]="locationId" (selectionChange)="loadAssignments()"
+      ><mat-option *ngFor="let location of locations()" [value]="location.id"
+        >{{ location.name }} · {{ location.type }}</mat-option
+      ></mat-select
+    ></mat-form-field
+  ><mat-form-field appearance="outline"
+    ><mat-label>Usuario</mat-label
+    ><mat-select [(ngModel)]="userId"
+      ><mat-option *ngFor="let user of availableUsers()" [value]="user.id"
+        >{{ user.name }} · {{ user.email }} · {{ user.globalRole }}</mat-option
+      ></mat-select
+    ></mat-form-field
+  ><mat-form-field appearance="outline"
+    ><mat-label>Tipo de acceso</mat-label
+    ><mat-select [(ngModel)]="role"
+      ><mat-option value="WORKER">Trabajador</mat-option
+      ><mat-option value="RESPONSIBLE">Responsable</mat-option
+      ><mat-option value="CLIENT">Cliente</mat-option></mat-select
+    ></mat-form-field
+  ><button mat-flat-button color="primary" [disabled]="!locationId || !userId" (click)="assign()">
+    Asignar
+  </button></mat-card
+><mat-card class="list-card"
+  ><h3>{{ selectedLocation()?.name || 'Selecciona una ubicación' }}</h3>
+  <div class="assignment" *ngFor="let item of assignments()">
+    <div>
+      <strong>{{ item.user.name }}</strong
+      ><small>{{ item.user.email }} · {{ labels[item.role] || item.role }}</small>
+    </div>
+    <button mat-button color="warn" (click)="remove(item.userId)">Quitar</button>
+  </div>
+  <p class="empty" *ngIf="locationId && !assignments().length">
+    No hay usuarios asignados.
+  </p></mat-card
+>
+<p class="error" *ngIf="error()">{{ error() }}</p>

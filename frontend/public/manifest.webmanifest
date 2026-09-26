@@ -1,0 +1,14 @@
+{
+  "name": "Vaso Verde Portal",
+  "short_name": "Vaso Verde",
+  "description": "Portal operativo para la gestión de eventos de Vaso Verde",
+  "start_url": "/portal",
+  "display": "standalone",
+  "background_color": "#f5f8f5",
+  "theme_color": "#277351",
+  "lang": "es",
+  "icons": [
+    { "src": "/icon-192.svg", "sizes": "192x192", "type": "image/svg+xml", "purpose": "any maskable" },
+    { "src": "/icon-512.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

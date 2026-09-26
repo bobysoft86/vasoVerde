@@ -1,0 +1,134 @@
+<main class="pos">
+  <a class="back" [routerLink]="['/events', eventId, 'operate']">← Puntos de trabajo</a
+  ><ng-container *ngIf="location() as current"
+    ><header>
+      <div>
+        <p class="eyebrow">{{ current.type === 'BAR' ? 'OPERATIVA DE VASOS' : 'CAJA POS' }}</p>
+        <h1>{{ current.name }}</h1>
+        <p>
+          {{
+            current.type === 'BAR'
+              ? 'Registra entregas, recogidas y traslados en una sola operación.'
+              : 'Vende vasos, devuelve el euro y controla el fondo de cambio.'
+          }}
+        </p>
+      </div>
+      <div class="round">
+        <mat-icon>{{ current.type === 'BAR' ? 'local_bar' : 'point_of_sale' }}</mat-icon>
+      </div>
+    </header>
+    <section *ngIf="current.type !== 'BAR'" class="cash-area">
+      <mat-card *ngIf="!session()" class="open"
+        ><h2>Abrir caja</h2>
+        <p>Introduce el fondo inicial disponible para devolver dinero.</p>
+        <mat-form-field appearance="outline"
+          ><mat-label>Fondo inicial (€)</mat-label
+          ><input matInput type="number" min="0" [(ngModel)]="openingAmount" /></mat-form-field
+        ><button mat-flat-button color="primary" (click)="openCash()">Abrir caja</button></mat-card
+      ><ng-container *ngIf="session() as cash"
+        ><mat-card class="balance"
+          ><div>
+            <span>Saldo esperado</span
+            ><strong>{{ cash.expectedAmount | number: '1.2-2' }} €</strong>
+          </div>
+          <button mat-stroked-button (click)="closeCash()">Cerrar caja</button></mat-card
+        ><mat-card class="quick"
+          ><h2>Operación rápida</h2>
+          <div class="quick-grid">
+            <button mat-flat-button color="primary" (click)="sale()">
+              <mat-icon>local_drink</mat-icon>Venta de vaso</button
+            ><button mat-flat-button class="refund" (click)="refund()">
+              <mat-icon>currency_exchange</mat-icon>Devolución de vaso
+            </button>
+          </div>
+          <div class="fields">
+            <mat-form-field appearance="outline"
+              ><mat-label>Tipo de vaso</mat-label
+              ><mat-select [(ngModel)]="cupTypeId"
+                ><mat-option *ngFor="let cup of cups()" [value]="cup.id">{{
+                  cup.name
+                }}</mat-option></mat-select
+              ></mat-form-field
+            ><mat-form-field appearance="outline"
+              ><mat-label>Unidades</mat-label
+              ><input matInput type="number" min="1" [(ngModel)]="quantity"
+            /></mat-form-field>
+          </div>
+          <div class="cash-extra">
+            <mat-form-field appearance="outline"
+              ><mat-label>Otra operación</mat-label
+              ><mat-select [(ngModel)]="otherType"
+                ><mat-option value="CASH_IN">Entrada de efectivo</mat-option
+                ><mat-option value="CASH_OUT">Salida de efectivo</mat-option
+                ><mat-option value="COLLECTION">Retirada / recaudación</mat-option></mat-select
+              ></mat-form-field
+            ><mat-form-field appearance="outline"
+              ><mat-label>Importe (€)</mat-label
+              ><input matInput type="number" min="0.01" [(ngModel)]="otherAmount" /></mat-form-field
+            ><button mat-stroked-button (click)="otherMovement()">Registrar</button>
+          </div></mat-card
+        ></ng-container
+      >
+    </section>
+    <section *ngIf="current.type === 'BAR'" class="bar-area">
+      <mat-card
+        ><h2>Movimiento de vasos</h2>
+        <div class="quick-grid">
+          <button mat-flat-button color="primary" (click)="barType = 'RETURN'">
+            Recoger de la barra</button
+          ><button mat-stroked-button (click)="barType = 'DELIVERY'">Entregar a la barra</button>
+        </div>
+        <p class="selected">
+          {{
+            barType === 'RETURN'
+              ? 'Recogida: la barra puede tener más vasos de los entregados.'
+              : 'Entrega: se descontará stock limpio del origen.'
+          }}
+        </p>
+        <div class="fields">
+          <mat-form-field appearance="outline"
+            ><mat-label>Origen</mat-label
+            ><mat-select [(ngModel)]="sourceId"
+              ><mat-option *ngFor="let item of selectableSources()" [value]="item.id">{{
+                item.name
+              }}</mat-option></mat-select
+            ></mat-form-field
+          ><mat-form-field appearance="outline"
+            ><mat-label>Destino</mat-label
+            ><mat-select [(ngModel)]="destinationId"
+              ><mat-option *ngFor="let item of selectableDestinations()" [value]="item.id">{{
+                item.name
+              }}</mat-option></mat-select
+            ></mat-form-field
+          ><mat-form-field appearance="outline"
+            ><mat-label>Tipo de vaso</mat-label
+            ><mat-select [(ngModel)]="cupTypeId"
+              ><mat-option *ngFor="let cup of cups()" [value]="cup.id">{{
+                cup.name
+              }}</mat-option></mat-select
+            ></mat-form-field
+          ><mat-form-field appearance="outline"
+            ><mat-label>Estado</mat-label
+            ><mat-select [(ngModel)]="condition"
+              ><mat-option value="CLEAN">Limpio</mat-option
+              ><mat-option value="DIRTY">Sucio</mat-option
+              ><mat-option value="DAMAGED">Dañado</mat-option></mat-select
+            ></mat-form-field
+          ><mat-form-field appearance="outline"
+            ><mat-label>Cantidad</mat-label
+            ><input matInput type="number" min="1" [(ngModel)]="quantity"
+          /></mat-form-field>
+        </div>
+        <button
+          mat-flat-button
+          color="primary"
+          [disabled]="!cupTypeId || !sourceId || !destinationId"
+          (click)="saveStock()"
+        >
+          Guardar y generar albarán
+        </button></mat-card
+      >
+    </section></ng-container
+  >
+  <p class="error" *ngIf="error()">{{ error() }}</p>
+</main>

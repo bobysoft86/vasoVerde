@@ -1,0 +1,34 @@
+<div class="head">
+  <div>
+    <p class="eyebrow">DOCUMENTACIÓN</p>
+    <h2>Albaranes</h2>
+    <p>Histórico de entregas, recogidas y traslados firmados.</p>
+  </div>
+</div>
+<div class="list">
+  <mat-card *ngFor="let note of notes()"
+    ><div class="main">
+      <strong>{{ note.number }}</strong
+      ><span class="badge" [class.signed]="note.status === 'SIGNED'">{{ labels[note.status] }}</span
+      ><small>{{ note.type }} · {{ note.createdAt | date: 'dd/MM/yyyy HH:mm' }}</small>
+    </div>
+    <div class="route">
+      {{ note.stockMovement.sourceLocation?.name || 'Entrada' }} →
+      {{ note.stockMovement.destinationLocation?.name || 'Salida' }}
+    </div>
+    <div class="actions">
+      <a mat-stroked-button [routerLink]="[note.id]">Ver</a
+      ><button
+        mat-icon-button
+        *ngIf="note.status === 'SIGNED'"
+        (click)="download(note)"
+        aria-label="Descargar PDF"
+      >
+        <mat-icon>picture_as_pdf</mat-icon>
+      </button>
+    </div></mat-card
+  >
+</div>
+<p class="empty" *ngIf="!loading() && !notes().length">
+  Aún no hay albaranes. Puedes generarlos desde un movimiento elegible.
+</p>

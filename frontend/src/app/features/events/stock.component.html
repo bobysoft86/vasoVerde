@@ -1,0 +1,35 @@
+<div class="head">
+  <div>
+    <h2>Stock del evento</h2>
+    <p>Saldo reconstruido a partir de los movimientos confirmados.</p>
+  </div>
+  <a mat-flat-button color="primary" [routerLink]="['../movements/new']">Nuevo movimiento</a>
+</div>
+<div class="summary">
+  <mat-card *ngFor="let item of stock()?.summary"
+    ><span>{{ item.cupTypeName }}</span
+    ><strong>{{ item.total }}</strong
+    ><small
+      >Limpios {{ item.clean }} · Sucios {{ item.dirty }} · Dañados {{ item.damaged }}</small
+    ></mat-card
+  >
+</div>
+<mat-card class="locations"
+  ><mat-form-field appearance="outline"
+    ><mat-label>Ver stock por ubicación</mat-label
+    ><mat-select (selectionChange)="selectLocation($event.value)"
+      ><mat-option [value]="''">Selecciona una ubicación</mat-option
+      ><mat-option *ngFor="let location of locations()" [value]="location.id">{{
+        location.name
+      }}</mat-option></mat-select
+    ></mat-form-field
+  >
+  <div *ngIf="selected() as detail">
+    <h3>{{ detail.location.name }}</h3>
+    <div class="detail-row" *ngFor="let item of detail.items">
+      <span>{{ item.cupTypeName }} · {{ item.condition }}</span
+      ><strong>{{ item.quantity }}</strong>
+    </div>
+    <p class="empty" *ngIf="!detail.items.length">Sin stock registrado.</p>
+  </div></mat-card
+>

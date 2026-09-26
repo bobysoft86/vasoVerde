@@ -1,0 +1,20 @@
+.back {
+  color: #277351;
+  text-decoration: none;
+}
+.intro {
+  color: #77877e;
+}
+.card {
+  padding: 22px;
+  max-width: 720px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.success {
+  color: #18734a;
+}
+.error {
+  color: #a13d31;
+}

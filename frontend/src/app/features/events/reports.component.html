@@ -1,0 +1,21 @@
+<a class="back" [routerLink]="['..', 'overview']">← Dashboard del evento</a>
+<h2>Informes</h2>
+<p class="intro">Consulta datos operativos y exporta CSV compatible con Excel y LibreOffice.</p>
+<div class="cards">
+  <mat-card
+    ><mat-icon>inventory_2</mat-icon>
+    <h3>Informe de stock</h3>
+    <p>Stock por tipo de vaso, condición y ubicación.</p>
+    <button mat-flat-button color="primary" (click)="downloadStock()">
+      Exportar stock CSV
+    </button></mat-card
+  ><mat-card
+    ><mat-icon>payments</mat-icon>
+    <h3>Informe económico</h3>
+    <p>Recaudación, gastos, retiradas y ajustes registrados.</p>
+    <button mat-flat-button color="primary" (click)="downloadCash()">
+      Exportar caja CSV
+    </button></mat-card
+  >
+</div>
+<p class="error" *ngIf="error">{{ error }}</p>

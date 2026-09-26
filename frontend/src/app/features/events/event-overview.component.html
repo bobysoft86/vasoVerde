@@ -1,0 +1,46 @@
+<ng-container *ngIf="data() as item; else loading"
+  ><section class="kpis">
+    <mat-card
+      ><span>Vasos totales</span><strong>{{ item.stock.total | number }}</strong
+      ><small>{{ item.stock.circulation | number }} en circulación</small></mat-card
+    ><mat-card
+      ><span>Limpios</span><strong>{{ item.stock.clean | number }}</strong
+      ><small>Disponibles</small></mat-card
+    ><mat-card
+      ><span>Sucios</span><strong>{{ item.stock.dirty | number }}</strong
+      ><small>Pendientes de limpieza</small></mat-card
+    ><mat-card
+      ><span>Pendientes de firma</span><strong>{{ item.deliveryNotes.pendingSignature }}</strong
+      ><small><a [routerLink]="['../delivery-notes']">Ver albaranes</a></small></mat-card
+    >
+  </section>
+  <section class="columns">
+    <mat-card
+      ><h3>Alertas operativas</h3>
+      <div class="alert" *ngFor="let alert of item.alerts">
+        <mat-icon [class.critical]="alert.severity === 'CRITICAL'">warning</mat-icon
+        ><span
+          ><b>{{ alert.title }}</b
+          ><br />{{ alert.message }}</span
+        >
+      </div>
+      <p class="empty" *ngIf="!item.alerts.length">No hay alertas activas.</p></mat-card
+    ><mat-card
+      ><h3>Stock por tipo</h3>
+      <div class="row" *ngFor="let cup of item.stock.byCup">
+        <span
+          ><b>{{ cup.cupTypeName }}</b
+          ><small>{{ cup.cupTypeCode }}</small></span
+        ><strong>{{ cup.total | number }}</strong
+        ><em>{{ cup.clean }} limpios · {{ cup.dirty }} sucios</em>
+      </div></mat-card
+    >
+  </section>
+  <section class="quick">
+    <a mat-stroked-button [routerLink]="['../movements/new']"
+      ><mat-icon>local_shipping</mat-icon> Entregar / recoger vasos</a
+    ><a mat-stroked-button [routerLink]="['../delivery-notes']"
+      ><mat-icon>description</mat-icon> Ver albaranes</a
+    ><a mat-stroked-button [routerLink]="['../reports']"><mat-icon>summarize</mat-icon> Informes</a>
+  </section></ng-container
+><ng-template #loading><p class="empty">Cargando dashboard del evento…</p></ng-template>

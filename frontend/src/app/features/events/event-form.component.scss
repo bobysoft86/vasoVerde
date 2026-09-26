@@ -1,0 +1,54 @@
+.page-head a {
+  color: #277351;
+  text-decoration: none;
+}
+.page-head h1 {
+  margin: 12px 0 6px;
+  color: #20382b;
+}
+.page-head p {
+  margin: 0 0 22px;
+  color: #77877e;
+}
+.form-card {
+  padding: 24px;
+  max-width: 850px;
+}
+.form-card form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.wide,
+.actions {
+  grid-column: 1/-1;
+}
+.form-card label {
+  display: grid;
+  gap: 7px;
+  color: #4f6258;
+  font-size: 13px;
+}
+.form-card input[type='date'] {
+  height: 52px;
+  border: 1px solid #b9c8bf;
+  border-radius: 4px;
+  padding: 0 14px;
+  font: inherit;
+  color: #263a30;
+}
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+@media (max-width: 650px) {
+  .form-card form {
+    grid-template-columns: 1fr;
+  }
+  .wide,
+  .actions {
+    grid-column: auto;
+  }
+}

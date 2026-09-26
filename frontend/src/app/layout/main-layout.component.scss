@@ -1,0 +1,80 @@
+.shell {
+  height: 100vh;
+  background: #f5f7f6;
+}
+.sidenav {
+  width: 250px;
+  padding: 20px 14px;
+  border-right: 1px solid #e3e9e5;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px 28px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1d4d3b;
+}
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: #226b4e;
+  color: #fff;
+  font-size: 12px;
+}
+nav {
+  display: grid;
+  gap: 6px;
+}
+nav a {
+  justify-content: flex-start;
+  gap: 12px;
+  height: 46px;
+  color: #52645c;
+}
+nav a.active {
+  background: #e2f0e8;
+  color: #1d6848;
+}
+.nav-footer {
+  position: absolute;
+  bottom: 24px;
+  left: 24px;
+  right: 24px;
+  color: #91a099;
+  font-size: 12px;
+}
+.toolbar {
+  background: #fff;
+  border-bottom: 1px solid #e3e9e5;
+  color: #24382f;
+}
+.toolbar-title {
+  margin-left: 12px;
+  font-weight: 600;
+}
+.spacer {
+  flex: 1;
+}
+.user-label {
+  font-size: 13px;
+  color: #607169;
+  margin-right: 8px;
+}
+.content {
+  padding: 32px;
+  max-width: 1440px;
+  margin: auto;
+}
+@media (max-width: 600px) {
+  .content {
+    padding: 22px 16px;
+  }
+  .user-label {
+    display: none;
+  }
+}

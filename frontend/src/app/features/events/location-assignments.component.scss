@@ -1,0 +1,45 @@
+.back {
+  color: #277351;
+  text-decoration: none;
+}
+.head h2 {
+  margin: 12px 0 5px;
+  color: #20382b;
+}
+.head p {
+  color: #77877e;
+}
+.form-card,
+.list-card {
+  padding: 20px;
+  margin-top: 18px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.list-card {
+  display: block;
+}
+.list-card h3 {
+  color: #286547;
+  margin-top: 0;
+}
+.assignment {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #eef3ef;
+  padding: 12px 0;
+}
+.assignment small {
+  display: block;
+  color: #829189;
+  margin-top: 4px;
+}
+.empty {
+  color: #87938d;
+}
+.error {
+  color: #a13d31;
+}

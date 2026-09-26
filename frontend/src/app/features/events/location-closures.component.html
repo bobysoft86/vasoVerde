@@ -1,0 +1,48 @@
+<a class="back" [routerLink]="['..', 'overview']">← Dashboard del evento</a>
+<div class="head">
+  <p class="eyebrow">CIERRE OPERATIVO</p>
+  <h2>Cerrar barra o caseta</h2>
+  <p>
+    Cuenta lo que queda y trasládalo al destino. No se bloqueará por superar el stock registrado.
+  </p>
+</div>
+<mat-card class="card"
+  ><div class="form">
+    <mat-form-field appearance="outline"
+      ><mat-label>Barra o caseta</mat-label
+      ><mat-select [(ngModel)]="sourceId"
+        ><mat-option *ngFor="let location of sources()" [value]="location.id">{{
+          location.name
+        }}</mat-option></mat-select
+      ></mat-form-field
+    ><mat-form-field appearance="outline"
+      ><mat-label>Destino</mat-label
+      ><mat-select [(ngModel)]="destinationId"
+        ><mat-option *ngFor="let location of destinations()" [value]="location.id"
+          >{{ location.name }} · {{ location.type }}</mat-option
+        ></mat-select
+      ></mat-form-field
+    >
+  </div>
+  <h3>Vasos que quedan</h3>
+  <div class="table">
+    <div class="row header">
+      <span>Tipo</span><span>Limpios</span><span>Sucios</span><span>Dañados</span>
+    </div>
+    <div class="row" *ngFor="let cup of cups()">
+      <b>{{ cup.name }}</b
+      ><input type="number" min="0" [(ngModel)]="counts[cup.id].CLEAN" /><input
+        type="number"
+        min="0"
+        [(ngModel)]="counts[cup.id].DIRTY"
+      /><input type="number" min="0" [(ngModel)]="counts[cup.id].DAMAGED" />
+    </div>
+  </div>
+  <mat-form-field class="notes" appearance="outline"
+    ><mat-label>Notas</mat-label><textarea matInput [(ngModel)]="notes"></textarea></mat-form-field
+  ><button mat-flat-button color="primary" [disabled]="saving" (click)="save()">
+    {{ saving ? 'Cerrando…' : 'Cerrar ubicación y registrar recogida' }}
+  </button></mat-card
+>
+<p class="success" *ngIf="success()">Cierre registrado correctamente.</p>
+<p class="error" *ngIf="error()">{{ error() }}</p>

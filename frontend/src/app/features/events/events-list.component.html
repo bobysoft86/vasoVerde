@@ -1,0 +1,39 @@
+<section class="page-heading">
+  <div>
+    <p class="eyebrow">OPERACIÓN</p>
+    <h1>Eventos</h1>
+    <p class="subtitle">Consulta y gestiona la estructura de tus eventos.</p>
+  </div>
+  <button mat-flat-button color="primary" routerLink="/events/new">
+    <mat-icon>add</mat-icon> Nuevo evento
+  </button>
+</section>
+<mat-form-field appearance="outline" class="search"
+  ><mat-label>Buscar eventos</mat-label
+  ><input matInput (input)="search($any($event.target).value)" /><mat-icon matPrefix
+    >search</mat-icon
+  ></mat-form-field
+>
+<div class="events-grid">
+  <mat-card *ngFor="let event of events()" [routerLink]="['/events', event.id]" class="event-card"
+    ><div class="card-top">
+      <span class="status">{{ event.status }}</span
+      ><mat-icon aria-hidden="true">chevron_right</mat-icon>
+    </div>
+    <h2>{{ event.name }}</h2>
+    <p class="code">{{ event.code }}</p>
+    <p class="location" *ngIf="event.location">
+      <mat-icon>location_on</mat-icon>{{ event.location }}
+    </p>
+    <div class="counts">
+      <span
+        ><strong>{{ event._count?.booths ?? 0 }}</strong> Casetas</span
+      ><span
+        ><strong>{{ event._count?.bars ?? 0 }}</strong> Barras</span
+      ><span
+        ><strong>{{ event._count?.users ?? 0 }}</strong> Usuarios</span
+      >
+    </div></mat-card
+  >
+</div>
+<div class="empty" *ngIf="!loading() && events().length === 0">No hay eventos disponibles.</div>

@@ -1,0 +1,61 @@
+<ng-container *ngIf="note() as item; else loading"
+  ><a class="back" [routerLink]="['..']">← Albaranes</a>
+  <header>
+    <div>
+      <p class="eyebrow">ALBARÁN</p>
+      <h1>{{ item.number }}</h1>
+      <p>{{ item.type }} · {{ item.createdAt | date: 'dd/MM/yyyy HH:mm' }}</p>
+    </div>
+    <span class="badge" [class.signed]="item.status === 'SIGNED'">{{ labels[item.status] }}</span>
+  </header>
+  <div class="grid">
+    <mat-card
+      ><h3>Operación</h3>
+      <p><strong>Origen</strong><br />{{ item.stockMovement.sourceLocation?.name || 'Entrada' }}</p>
+      <p>
+        <strong>Destino</strong><br />{{ item.stockMovement.destinationLocation?.name || 'Salida' }}
+      </p>
+      <p *ngIf="item.notes"><strong>Observaciones</strong><br />{{ item.notes }}</p>
+      <h3>Líneas</h3>
+      <div class="line" *ngFor="let line of item.stockMovement.items">
+        <span
+          >{{ line.cupType.name }} <small>{{ line.cupType.code }}</small></span
+        ><b>{{ line.quantity }} · {{ line.condition }}</b>
+      </div></mat-card
+    ><mat-card
+      ><h3>Firmas</h3>
+      <div class="signature" *ngFor="let signature of item.signatures">
+        <mat-icon>draw</mat-icon
+        ><span
+          ><strong>{{ signature.type === 'DELIVERED_BY' ? 'Entrega' : 'Recepción' }}</strong
+          ><br />{{ signature.signerName }} ·
+          {{ signature.signedAt | date: 'dd/MM/yyyy HH:mm' }}</span
+        >
+      </div>
+      <ng-container *ngIf="item.status !== 'SIGNED' && item.status !== 'CANCELLED'"
+        ><mat-form-field appearance="outline"
+          ><mat-label>Tipo de firma</mat-label
+          ><mat-select [(ngModel)]="signatureType"
+            ><mat-option value="DELIVERED_BY">Entrega</mat-option
+            ><mat-option value="RECEIVED_BY">Recepción</mat-option></mat-select
+          ></mat-form-field
+        ><mat-form-field appearance="outline"
+          ><mat-label>Nombre del firmante</mat-label
+          ><input matInput [(ngModel)]="signerName" maxlength="160" /></mat-form-field
+        ><app-signature-pad #pad></app-signature-pad
+        ><button mat-flat-button color="primary" (click)="sign()" [disabled]="saving()">
+          {{ saving() ? 'Guardando…' : 'Confirmar firma' }}
+        </button>
+        <p class="error" *ngIf="error()">{{ error() }}</p></ng-container
+      ></mat-card
+    >
+  </div>
+  <div class="footer-actions">
+    <button mat-flat-button color="primary" *ngIf="item.status === 'SIGNED'" (click)="download()">
+      <mat-icon>download</mat-icon> Descargar PDF</button
+    ><button mat-stroked-button *ngIf="item.status === 'SIGNED'" (click)="email()">
+      <mat-icon>mail</mat-icon> Enviar por email
+    </button>
+    <p class="success" *ngIf="message()">{{ message() }}</p>
+  </div></ng-container
+><ng-template #loading><p>Cargando albarán…</p></ng-template>

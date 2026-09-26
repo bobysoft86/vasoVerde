@@ -1,0 +1,50 @@
+<div class="section-head">
+  <div>
+    <h2>Barras</h2>
+    <p>Puntos de operación y servicio del evento.</p>
+  </div>
+  <button mat-flat-button color="primary" (click)="showForm.set(!showForm())">
+    <mat-icon>add</mat-icon> Nueva barra
+  </button>
+</div>
+<mat-card *ngIf="showForm()" class="form-card"
+  ><form [formGroup]="form" (ngSubmit)="save()">
+    <mat-form-field appearance="outline"
+      ><mat-label>Nombre</mat-label><input matInput formControlName="name" /></mat-form-field
+    ><mat-form-field appearance="outline"
+      ><mat-label>Código</mat-label><input matInput formControlName="code" /></mat-form-field
+    ><mat-form-field appearance="outline"
+      ><mat-label>Caseta (opcional)</mat-label
+      ><mat-select formControlName="boothId"
+        ><mat-option [value]="null">Sin caseta</mat-option
+        ><mat-option *ngFor="let booth of booths()" [value]="booth.id">{{
+          booth.name
+        }}</mat-option></mat-select
+      ></mat-form-field
+    ><mat-form-field appearance="outline"
+      ><mat-label>Cliente asignado</mat-label
+      ><mat-select formControlName="clientUserId"
+        ><mat-option [value]="null">Sin cliente</mat-option
+        ><mat-option *ngFor="let client of clients()" [value]="client.id"
+          >{{ client.name }} · {{ client.email }}</mat-option
+        ></mat-select
+      ></mat-form-field
+    ><mat-form-field appearance="outline"
+      ><mat-label>Descripción</mat-label
+      ><input matInput formControlName="description" /></mat-form-field
+    ><button mat-flat-button color="primary" [disabled]="form.invalid">Guardar</button>
+  </form></mat-card
+>
+<div class="list">
+  <mat-card *ngFor="let bar of bars()"
+    ><div>
+      <strong>{{ bar.name }}</strong
+      ><small
+        >{{ bar.code }} · {{ bar.booth?.name || 'Sin caseta' }} ·
+        {{ bar.clientUser?.email || 'Sin cliente' }}</small
+      >
+    </div>
+    <span [class.off]="!bar.active">{{ bar.active ? 'Activo' : 'Inactivo' }}</span></mat-card
+  >
+</div>
+<p class="empty" *ngIf="!loading() && bars().length === 0">No hay barras creadas todavía.</p>

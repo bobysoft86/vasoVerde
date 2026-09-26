@@ -1,0 +1,5 @@
+:host { display: block; }
+section { max-width: 900px; padding: 16px; }
+.checklist { list-style: none; padding: 0; margin: 24px 0; }
+.checklist li { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 16px 0; border-bottom: 1px solid #ddd; }
+.error { color: #b3261e; }

@@ -1,0 +1,116 @@
+<main class="warehouse">
+  <header class="page-head">
+    <div>
+      <a class="back" routerLink="/dashboard">← Dashboard</a>
+      <p class="eyebrow">LOGÍSTICA GLOBAL</p>
+      <h1>Nave central</h1>
+      <p>Stock global, vasos pendientes de lavar y movimientos de entrada y salida.</p>
+    </div>
+    <mat-icon class="hero-icon">warehouse</mat-icon>
+  </header>
+
+  <mat-card class="receipt">
+    <div class="card-title">
+      <div>
+        <p class="eyebrow">ENTRADA DE FÁBRICA</p>
+        <h2>Recepcionar vasos nuevos</h2>
+        <p>
+          Introduce aquí los vasos que llegan de fábrica. Se incorporarán como stock limpio de la
+          nave central.
+        </p>
+      </div>
+      <mat-icon>inventory_2</mat-icon>
+    </div>
+    <div class="receipt-line" *ngFor="let line of lines; let i = index">
+      <mat-form-field appearance="outline"
+        ><mat-label>Tipo de vaso</mat-label
+        ><mat-select [(ngModel)]="line.cupTypeId"
+          ><mat-option *ngFor="let cup of cups()" [value]="cup.id">{{
+            cup.name
+          }}</mat-option></mat-select
+        ></mat-form-field
+      >
+      <mat-form-field appearance="outline"
+        ><mat-label>Unidades</mat-label
+        ><input matInput type="number" min="1" [(ngModel)]="line.quantity"
+      /></mat-form-field>
+      <button
+        mat-button
+        color="warn"
+        type="button"
+        (click)="removeLine(i)"
+        *ngIf="lines.length > 1"
+      >
+        Quitar
+      </button>
+    </div>
+    <input
+      class="notes"
+      type="text"
+      placeholder="Referencia o albarán de fábrica (opcional)"
+      [(ngModel)]="notes"
+    />
+    <div class="receipt-actions">
+      <button mat-button type="button" (click)="addLine()">+ Añadir tipo</button
+      ><button
+        mat-flat-button
+        color="primary"
+        type="button"
+        (click)="submit()"
+        [disabled]="saving()"
+      >
+        {{ saving() ? 'Registrando…' : 'Registrar recepción' }}
+      </button>
+    </div>
+  </mat-card>
+
+  <div class="areas" *ngIf="data() as overview">
+    <mat-card class="area" *ngFor="let area of overview.locations">
+      <div class="area-head">
+        <div>
+          <span>{{ labels[area.type] || area.type }}</span>
+          <h2>{{ area.name }}</h2>
+        </div>
+        <mat-icon>{{
+          area.type === 'CLEANING_AREA' ? 'local_laundry_service' : 'warehouse'
+        }}</mat-icon>
+      </div>
+      <div class="stock-row" *ngFor="let item of area.items">
+        <span>{{ item.cupTypeName }} · {{ item.condition }}</span
+        ><strong>{{ item.quantity }}</strong>
+      </div>
+      <p class="empty" *ngIf="!area.items.length">Sin stock registrado.</p>
+    </mat-card>
+  </div>
+
+  <mat-card class="circuit">
+    <mat-icon>sync_alt</mat-icon>
+    <div>
+      <h2>Circuito de limpieza</h2>
+      <p>
+        Recoger sucios → enviar a la zona de lavado → devolver limpios a la nave central → preparar
+        el siguiente evento.
+      </p>
+    </div>
+  </mat-card>
+
+  <mat-card class="movements" *ngIf="data() as overview">
+    <h2>Últimos movimientos de la nave</h2>
+    <div class="movement" *ngFor="let movement of overview.movements">
+      <div>
+        <strong>{{ movement.type }}</strong>
+        <small
+          >{{ movement.createdAt | date: 'dd/MM/yyyy HH:mm' }} ·
+          {{ movement.createdBy.name }}</small
+        >
+      </div>
+      <span
+        >{{ movement.sourceLocation?.name || 'Entrada' }} →
+        {{ movement.destinationLocation?.name || 'Salida' }}</span
+      >
+      <small>{{ movement.items.length }} línea(s)</small>
+    </div>
+    <p class="empty" *ngIf="!overview.movements.length">Todavía no hay movimientos.</p>
+  </mat-card>
+  <p class="error" *ngIf="error()">{{ error() }}</p>
+</main>

@@ -1,0 +1,106 @@
+<section class="page-heading">
+  <div>
+    <p class="eyebrow">ADMINISTRACIÓN</p>
+    <h1>Usuarios</h1>
+    <p class="subtitle">Gestiona el acceso de tu equipo y sus eventos.</p>
+  </div>
+  <button mat-flat-button color="primary" (click)="startCreate()">
+    <mat-icon>person_add</mat-icon> Nuevo usuario
+  </button>
+</section>
+<div class="grid">
+  <mat-card class="table-card"
+    ><div class="search">
+      <mat-form-field appearance="outline"
+        ><mat-label>Buscar usuarios</mat-label
+        ><input
+          matInput
+          [value]="query()"
+          (input)="query.set($any($event.target).value)"
+        /><mat-icon matPrefix>search</mat-icon></mat-form-field
+      >
+    </div>
+    <div class="table-wrap">
+      <table mat-table [dataSource]="filteredUsers()">
+        <ng-container matColumnDef="name"
+          ><th mat-header-cell *matHeaderCellDef>Usuario</th>
+          <td mat-cell *matCellDef="let user">
+            <strong>{{ user.name }}</strong
+            ><small>{{ user.email }}</small>
+          </td></ng-container
+        ><ng-container matColumnDef="role"
+          ><th mat-header-cell *matHeaderCellDef>Rol</th>
+          <td mat-cell *matCellDef="let user">
+            <mat-chip>{{ user.globalRole }}</mat-chip>
+          </td></ng-container
+        ><ng-container matColumnDef="status"
+          ><th mat-header-cell *matHeaderCellDef>Estado</th>
+          <td mat-cell *matCellDef="let user">
+            <span class="status" [class.off]="!user.active"
+              ><i></i>{{ user.active ? 'Activo' : 'Inactivo' }}</span
+            >
+          </td></ng-container
+        ><ng-container matColumnDef="events"
+          ><th mat-header-cell *matHeaderCellDef>Eventos</th>
+          <td mat-cell *matCellDef="let user">{{ user.eventMemberships.length }}</td></ng-container
+        ><ng-container matColumnDef="actions"
+          ><th mat-header-cell *matHeaderCellDef></th>
+          <td mat-cell *matCellDef="let user">
+            <button mat-icon-button aria-label="Editar" (click)="edit(user)">
+              <mat-icon>edit</mat-icon></button
+            ><button
+              mat-icon-button
+              [attr.aria-label]="user.active ? 'Desactivar' : 'Activar'"
+              (click)="toggle(user)"
+            >
+              <mat-icon>{{ user.active ? 'person_off' : 'person' }}</mat-icon>
+            </button>
+          </td></ng-container
+        >
+        <tr mat-header-row *matHeaderRowDef="columns"></tr>
+        <tr mat-row *matRowDef="let row; columns: columns"></tr>
+      </table>
+      <div class="empty" *ngIf="!loading() && filteredUsers().length === 0">
+        No hay usuarios para mostrar.
+      </div>
+      <mat-spinner *ngIf="loading()" diameter="32"></mat-spinner></div
+  ></mat-card>
+  <mat-card class="form-card" *ngIf="editing()"
+    ><h2>{{ editingId() ? 'Editar usuario' : 'Nuevo usuario' }}</h2>
+    <form [formGroup]="form" (ngSubmit)="save()">
+      <mat-form-field appearance="outline"
+        ><mat-label>Nombre</mat-label><input matInput formControlName="name" /></mat-form-field
+      ><mat-form-field appearance="outline"
+        ><mat-label>Email</mat-label
+        ><input matInput type="email" formControlName="email" /></mat-form-field
+      ><mat-form-field appearance="outline"
+        ><mat-label>Teléfono</mat-label><input matInput formControlName="phone" /></mat-form-field
+      ><mat-form-field appearance="outline" *ngIf="!editingId()"
+        ><mat-label>Contraseña inicial</mat-label
+        ><input matInput type="password" formControlName="password" /><mat-hint
+          >Mínimo 8 caracteres</mat-hint
+        ></mat-form-field
+      ><mat-form-field appearance="outline"
+        ><mat-label>Rol global</mat-label
+        ><mat-select formControlName="globalRole"
+          ><mat-option value="USER">Usuario</mat-option
+          ><mat-option value="CLIENT">Cliente</mat-option
+          ><mat-option value="WORKER">Trabajador</mat-option
+          ><mat-option value="RESPONSIBLE">Responsable</mat-option
+          ><mat-option value="ADMIN">Administrador</mat-option></mat-select
+        ></mat-form-field
+      >
+      <div class="form-actions">
+        <button mat-button type="button" (click)="cancel()">Cancelar</button
+        ><button
+          mat-flat-button
+          color="primary"
+          type="submit"
+          [disabled]="form.invalid || saving()"
+        >
+          Guardar
+        </button>
+      </div>
+    </form></mat-card
+  >
+</div>

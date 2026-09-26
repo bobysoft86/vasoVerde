@@ -1,0 +1,49 @@
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.head h2 {
+  margin: 0;
+  color: #20382b;
+}
+.head p {
+  color: #77877e;
+}
+.list {
+  display: grid;
+  gap: 10px;
+  margin-top: 20px;
+}
+.list mat-card {
+  padding: 18px;
+  display: grid;
+  grid-template-columns: 1fr 1.2fr auto;
+  gap: 12px;
+  align-items: center;
+}
+.list small {
+  display: block;
+  color: #829189;
+  margin-top: 5px;
+}
+.route {
+  color: #52645c;
+}
+.list span {
+  font-size: 12px;
+  color: #2e815d;
+}
+.empty {
+  text-align: center;
+  color: #87938d;
+  padding: 35px;
+}
+@media (max-width: 700px) {
+  .list mat-card {
+    grid-template-columns: 1fr;
+  }
+  .route {
+    font-size: 13px;
+  }
+}

@@ -1,0 +1,62 @@
+.head h2 {
+  margin: 0;
+  color: #20382b;
+}
+.head p {
+  color: #77877e;
+}
+.list {
+  display: grid;
+  gap: 10px;
+  margin-top: 20px;
+}
+.list mat-card {
+  padding: 17px;
+  display: grid;
+  grid-template-columns: 1.2fr 1.5fr auto;
+  gap: 14px;
+  align-items: center;
+}
+.main strong {
+  display: block;
+  color: #245c42;
+}
+.main small {
+  display: block;
+  color: #829189;
+  margin-top: 6px;
+}
+.badge {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #fff4db;
+  color: #8a651c;
+  font-size: 11px;
+}
+.badge.signed {
+  background: #dff4e6;
+  color: #18734a;
+}
+.route {
+  color: #52645c;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.empty {
+  text-align: center;
+  color: #87938d;
+  padding: 35px;
+}
+@media (max-width: 700px) {
+  .list mat-card {
+    grid-template-columns: 1fr;
+  }
+  .actions {
+    justify-content: flex-start;
+  }
+}

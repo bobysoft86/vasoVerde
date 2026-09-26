@@ -1,0 +1,100 @@
+<a class="back" [routerLink]="['..', 'overview']">← Dashboard del evento</a
+><a mat-stroked-button color="primary" [routerLink]="['..', 'cash-transfers']"
+  >Transferir efectivo entre cajas</a
+>
+<div class="head">
+  <div>
+    <p class="eyebrow">TESORERÍA OPERATIVA</p>
+    <h2>Cajas y fondos de cambio</h2>
+    <p>Abre una caja por almacén, caseta o barra y registra cada entrada, devolución y retirada.</p>
+  </div>
+</div>
+<mat-card class="open-card"
+  ><h3>Abrir caja</h3>
+  <div class="form">
+    <mat-form-field appearance="outline"
+      ><mat-label>Ubicación</mat-label
+      ><mat-select [(ngModel)]="openLocationId"
+        ><mat-option *ngFor="let location of locations()" [value]="location.id"
+          >{{ location.name }} · {{ location.type }}</mat-option
+        ></mat-select
+      ></mat-form-field
+    ><mat-form-field appearance="outline"
+      ><mat-label>Fondo inicial para cambio (€)</mat-label
+      ><input matInput type="number" min="0" [(ngModel)]="openingAmount" /></mat-form-field
+    ><button mat-flat-button color="primary" (click)="open()">Abrir caja</button>
+  </div></mat-card
+>
+<div class="sessions">
+  <mat-card *ngFor="let session of sessions()" [class.closed]="session.status === 'CLOSED'"
+    ><div class="session-head">
+      <div>
+        <h3>{{ session.location.name }}</h3>
+        <small
+          >{{ session.openedAt | date: 'dd/MM/yyyy HH:mm' }} ·
+          {{ session.status === 'OPEN' ? 'Abierta' : 'Cerrada' }}</small
+        >
+      </div>
+      <strong>{{ session.expectedAmount | number: '1.2-2' }} €</strong>
+    </div>
+    <div class="movement" *ngFor="let movement of session.movements">
+      <span
+        >{{ movement.concept
+        }}<small>{{ movement.type }} · {{ movement.createdAt | date: 'HH:mm' }}</small></span
+      ><b [class.out]="movement.signedAmount < 0"
+        >{{ movement.signedAmount > 0 ? '+' : ''
+        }}{{ movement.signedAmount | number: '1.2-2' }} €</b
+      >
+    </div>
+    <ng-container *ngIf="session.status === 'OPEN'"
+      ><div class="actions">
+        <button mat-stroked-button (click)="selected = session">
+          <span>Registrar movimiento</span></button
+        ><button mat-flat-button color="primary" (click)="close(session)">Cerrar y arquear</button>
+      </div>
+      <div class="movement-form" *ngIf="selected?.id === session.id">
+        <mat-form-field appearance="outline"
+          ><mat-label>Tipo</mat-label
+          ><mat-select [(ngModel)]="movementType"
+            ><mat-option *ngFor="let type of movementTypes" [value]="type">{{
+              labels[type]
+            }}</mat-option></mat-select
+          ></mat-form-field
+        ><mat-form-field appearance="outline"
+          ><mat-label>Importe (€)</mat-label
+          ><input matInput type="number" min="0.01" [(ngModel)]="movementAmount" /></mat-form-field
+        ><mat-form-field appearance="outline"
+          ><mat-label>Concepto</mat-label
+          ><input matInput [(ngModel)]="movementConcept" /></mat-form-field
+        ><ng-container *ngIf="movementType === 'REFUND' || movementType === 'SALE'"
+          ><mat-form-field appearance="outline"
+            ><mat-label>{{
+              movementType === 'SALE' ? 'Tipo de vaso vendido' : 'Tipo de vaso devuelto'
+            }}</mat-label
+            ><mat-select [(ngModel)]="refundCupTypeId"
+              ><mat-option *ngFor="let cup of cups()" [value]="cup.id">{{
+                cup.name
+              }}</mat-option></mat-select
+            ></mat-form-field
+          ><mat-form-field appearance="outline"
+            ><mat-label>{{
+              movementType === 'SALE' ? 'Unidades vendidas' : 'Unidades devueltas'
+            }}</mat-label
+            ><input
+              matInput
+              type="number"
+              min="1"
+              step="1"
+              [(ngModel)]="refundCupQuantity" /></mat-form-field
+          ><small class="hint"
+            >En venta se descontarán limpios; en devolución se añadirán sucios.</small
+          ></ng-container
+        ><button mat-flat-button color="primary" (click)="addMovement(session)">Guardar</button>
+      </div></ng-container
+    >
+    <p class="difference" *ngIf="session.status === 'CLOSED'">
+      Diferencia de cierre: {{ session.difference | number: '1.2-2' }} €
+    </p></mat-card
+  >
+</div>
+<p class="error" *ngIf="error()">{{ error() }}</p>

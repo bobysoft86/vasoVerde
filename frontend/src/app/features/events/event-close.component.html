@@ -1,0 +1,31 @@
+<section aria-labelledby="closure-title">
+  <h2 id="closure-title">Cierre del evento</h2>
+  <p>Completa los cierres de barras y casetas, liquida las cajas, firma los albaranes y termina el lavado.</p>
+  <button mat-stroked-button (click)="refresh()" [disabled]="loading() || saving()">Actualizar checklist</button>
+  @if (loading()) { <p role="status">Comprobando pendientes…</p> }
+  @if (error()) { <p role="alert" class="error">{{ error() }}</p> }
+  @if (success()) { <p role="status">Evento finalizado correctamente.</p> }
+  @if (checklist(); as data) {
+    <ul class="checklist">
+      <li><span>Barras y casetas sin cerrar: <strong>{{ data.blockers.pendingLocations }}</strong></span><a mat-button [routerLink]="['/events', eventId, 'closures']">Cerrar ubicaciones</a></li>
+      <li><span>Cajas abiertas: <strong>{{ data.blockers.openCashSessions }}</strong></span><a mat-button [routerLink]="['/events', eventId, 'cash']">Liquidar cajas</a></li>
+      <li><span>Albaranes sin firmar: <strong>{{ data.blockers.unsignedNotes }}</strong></span><a mat-button [routerLink]="['/events', eventId, 'delivery-notes']">Revisar albaranes</a></li>
+      <li><span>Vasos sucios pendientes de lavado: <strong>{{ data.blockers.dirtyStock }}</strong></span><a mat-button routerLink="/warehouse">Gestionar lavado</a></li>
+    </ul>
+    @if (data.pendingLocations.length) {
+      <p>Ubicaciones pendientes:</p>
+      <ul>@for (location of data.pendingLocations; track location.id) { <li>{{ location.name }}</li> }</ul>
+    }
+    @if (data.unsignedNotes.length) {
+      <p>Albaranes pendientes:</p>
+      <ul>@for (note of data.unsignedNotes; track note.id) { <li><a [routerLink]="['/events', eventId, 'delivery-notes', note.id]">{{ note.number }}</a></li> }</ul>
+    }
+    @if (isTerminal(data.status)) {
+      <p>Este evento ya está finalizado, archivado o cancelado.</p>
+    } @else {
+      <p>{{ data.ready ? 'Todo está listo para finalizar el evento.' : 'Resuelve todos los pendientes antes de finalizar.' }}</p>
+      @if (!data.canManage) { <p>Solo un administrador o responsable del evento puede finalizarlo.</p> }
+      <button mat-flat-button (click)="finish()" [disabled]="!data.ready || !data.canManage || loading() || saving()">{{ saving() ? 'Finalizando…' : 'Finalizar evento' }}</button>
+    }
+  }
+</section>

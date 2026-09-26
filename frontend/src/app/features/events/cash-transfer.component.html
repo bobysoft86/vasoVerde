@@ -1,0 +1,33 @@
+<a class="back" [routerLink]="['..', 'cash']">← Volver a cajas</a>
+<h2>Transferir efectivo entre cajas</h2>
+<p class="intro">
+  La operación crea una salida en la caja origen y una entrada enlazada en la caja destino.
+</p>
+<mat-card class="card"
+  ><mat-form-field appearance="outline"
+    ><mat-label>Caja origen</mat-label
+    ><mat-select [(ngModel)]="originSessionId"
+      ><mat-option *ngFor="let session of sessions()" [value]="session.id">{{
+        session.location.name
+      }}</mat-option></mat-select
+    ></mat-form-field
+  ><mat-form-field appearance="outline"
+    ><mat-label>Caja destino</mat-label
+    ><mat-select [(ngModel)]="destinationSessionId"
+      ><mat-option *ngFor="let session of sessions()" [value]="session.id">{{
+        session.location.name
+      }}</mat-option></mat-select
+    ></mat-form-field
+  ><mat-form-field appearance="outline"
+    ><mat-label>Importe (€)</mat-label
+    ><input matInput type="number" min="0.01" [(ngModel)]="amount" /></mat-form-field
+  ><mat-form-field appearance="outline"
+    ><mat-label>Concepto</mat-label><input matInput [(ngModel)]="concept" /></mat-form-field
+  ><mat-form-field appearance="outline"
+    ><mat-label>Notas</mat-label><textarea matInput [(ngModel)]="notes"></textarea></mat-form-field
+  ><button mat-flat-button color="primary" [disabled]="saving" (click)="save()">
+    {{ saving ? 'Transfiriendo…' : 'Transferir efectivo' }}
+  </button></mat-card
+>
+<p class="success" *ngIf="success()">Transferencia registrada en ambas cajas.</p>
+<p class="error" *ngIf="error()">{{ error() }}</p>

@@ -1,0 +1,139 @@
+.pos {
+  max-width: 850px;
+  margin: auto;
+  padding: 10px 0 40px;
+  color: #20382b;
+}
+.back {
+  color: #277351;
+  text-decoration: none;
+}
+.pos header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 25px 0 22px;
+}
+.eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #2e815d;
+  margin: 0;
+}
+.pos h1 {
+  font-size: clamp(30px, 6vw, 46px);
+  margin: 8px 0;
+}
+.pos header p:not(.eyebrow) {
+  color: #77877e;
+}
+.round {
+  display: grid;
+  place-items: center;
+  background: #e5f3e9;
+  color: #277351;
+  border-radius: 50%;
+  width: 66px;
+  height: 66px;
+}
+.round mat-icon {
+  font-size: 34px;
+  width: 34px;
+  height: 34px;
+}
+.pos mat-card {
+  padding: 22px;
+  margin-bottom: 16px;
+}
+.open {
+  text-align: center;
+}
+.open mat-form-field {
+  display: block;
+  max-width: 260px;
+  margin: 15px auto 4px;
+}
+.balance {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #e9f5ed;
+}
+.balance span {
+  display: block;
+  color: #65766d;
+}
+.balance strong {
+  display: block;
+  font-size: 32px;
+  margin-top: 4px;
+}
+.quick h2,
+.bar-area h2 {
+  margin-top: 0;
+}
+.quick-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.quick-grid button {
+  min-height: 56px;
+  font-size: 15px;
+}
+.quick-grid mat-icon {
+  vertical-align: middle;
+  margin-right: 6px;
+}
+.refund {
+  background: #fff0e9 !important;
+  color: #a13d31 !important;
+}
+.fields,
+.cash-extra {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+.fields mat-form-field,
+.cash-extra mat-form-field {
+  flex: 1 1 150px;
+}
+.cash-extra {
+  border-top: 1px dashed #c9d8cd;
+  padding-top: 18px;
+}
+.selected {
+  color: #65766d;
+  background: #f4f8f5;
+  padding: 12px;
+  border-radius: 8px;
+}
+.error {
+  color: #a13d31;
+  background: #fff0ed;
+  padding: 12px;
+  border-radius: 8px;
+}
+@media (max-width: 600px) {
+  .pos {
+    padding: 10px 0;
+  }
+  .pos header {
+    align-items: flex-start;
+  }
+  .round {
+    width: 50px;
+    height: 50px;
+  }
+  .quick-grid {
+    grid-template-columns: 1fr;
+  }
+  .balance {
+    align-items: flex-start;
+    gap: 10px;
+    flex-direction: column;
+  }
+}

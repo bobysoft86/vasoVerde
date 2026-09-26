@@ -1,0 +1,633 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+// No expiry: unresolved operations must be reconciled, never automatically retried.
+model IdempotencyRecord {
+  scopeHash    String   @id @db.Char(64)
+  bodyHash     String   @db.Char(64)
+  companyId    String
+  userId       String
+  method       String   @db.VarChar(10)
+  path         String   @db.Text
+  state        String   @db.VarChar(16)
+  statusCode   Int?
+  responseBody String?  @db.LongText
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([companyId, createdAt])
+}
+
+datasource db {
+  provider          = "mysql"
+  url               = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+enum EventStatus {
+  DRAFT
+  PLANNED
+  ACTIVE
+  FINISHED
+  CANCELLED
+  ARCHIVED
+}
+
+enum EventRole {
+  EVENT_MANAGER
+  BOOTH_MANAGER
+  BAR_MANAGER
+  OPERATOR
+  VIEWER
+}
+
+enum GlobalRole {
+  SUPER_ADMIN
+  ADMIN
+  USER
+  CLIENT
+  WORKER
+  RESPONSIBLE
+}
+
+enum LocationUserRole {
+  WORKER
+  RESPONSIBLE
+  CLIENT
+}
+
+enum LocationType {
+  CENTRAL_WAREHOUSE
+  EVENT_WAREHOUSE
+  BOOTH
+  BAR
+  CLEANING_AREA
+  OTHER
+}
+
+enum StockCondition {
+  CLEAN
+  DIRTY
+  DAMAGED
+  LOST
+}
+
+enum StockMovementType {
+  INITIAL_LOAD
+  TRANSFER
+  DELIVERY
+  RETURN
+  CLEANING_SEND
+  CLEANING_RETURN
+  ADJUSTMENT
+  LOSS
+  BREAKAGE
+  SALE
+}
+
+enum StockMovementStatus {
+  DRAFT
+  POSTED
+  CANCELLED
+}
+
+enum DeliveryNoteType {
+  DELIVERY
+  RETURN
+  TRANSFER
+}
+
+enum DeliveryNoteStatus {
+  DRAFT
+  PENDING_SIGNATURE
+  SIGNED
+  CANCELLED
+}
+
+enum SignatureType {
+  DELIVERED_BY
+  RECEIVED_BY
+}
+
+enum DeliveryNoteEmailStatus {
+  SENT
+  FAILED
+}
+
+enum CashMovementType {
+  INITIAL_CASH
+  CASH_IN
+  CASH_OUT
+  COLLECTION
+  WITHDRAWAL
+  EXPENSE
+  ADJUSTMENT
+  FINAL_SETTLEMENT
+  REFUND
+  SALE
+}
+
+enum CashSessionStatus {
+  OPEN
+  CLOSED
+}
+
+enum IncidentType {
+  STOCK
+  OPERATIONAL
+  CASH
+  SAFETY
+  OTHER
+}
+
+enum IncidentStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CANCELLED
+}
+
+model Company {
+  id                  String                   @id @default(cuid())
+  name                String
+  code                String                   @unique
+  active              Boolean                  @default(true)
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+  deletedAt           DateTime?
+  users               User[]
+  events              Event[]
+  cupTypes            CupType[]
+  locations           Location[]
+  movements           StockMovement[]
+  deliveryNotes       DeliveryNote[]
+  cashMovements       CashMovement[]
+  cashSessions        CashSession[]
+  cashTransfers       CashTransfer[]
+  locationClosures    LocationClosure[]
+  locationAssignments LocationUserAssignment[]
+  incidents           Incident[]
+  auditLogs           AuditLog[]
+  documentSequences   DocumentSequence[]
+}
+
+model User {
+  id                   String                   @id @default(cuid())
+  companyId            String
+  name                 String
+  email                String
+  passwordHash         String
+  globalRole           GlobalRole               @default(USER)
+  phone                String?
+  active               Boolean                  @default(true)
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+  deletedAt            DateTime?
+  company              Company                  @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  eventMemberships     EventUser[]
+  createdMovements     StockMovement[]          @relation("MovementCreatedBy")
+  createdDeliveryNotes DeliveryNote[]           @relation("DeliveryNoteCreatedBy")
+  signatures           Signature[]
+  createdCashMovements CashMovement[]           @relation("CashCreatedBy")
+  openedCashSessions   CashSession[]            @relation("CashSessionOpenedBy")
+  closedCashSessions   CashSession[]            @relation("CashSessionClosedBy")
+  locationClosures     LocationClosure[]
+  createdIncidents     Incident[]               @relation("IncidentCreatedBy")
+  auditLogs            AuditLog[]
+  refreshTokens        RefreshToken[]
+  deliveryNoteEmails   DeliveryNoteEmail[]
+  cashTransfers        CashTransfer[]
+  clientBars           Bar[]                    @relation("BarClient")
+  locationAssignments  LocationUserAssignment[]
+
+  @@unique([companyId, email])
+  @@index([companyId, active])
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  userAgent String?
+  ipAddress String?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+}
+
+model Event {
+  id                  String                   @id @default(cuid())
+  companyId           String
+  name                String
+  code                String
+  description         String?                  @db.Text
+  location            String?
+  startDate           DateTime
+  endDate             DateTime
+  status              EventStatus              @default(DRAFT)
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+  deletedAt           DateTime?
+  company             Company                  @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  users               EventUser[]
+  booths              Booth[]
+  bars                Bar[]
+  locations           Location[]
+  movements           StockMovement[]
+  deliveryNotes       DeliveryNote[]
+  cashMovements       CashMovement[]
+  cashSessions        CashSession[]
+  cashTransfers       CashTransfer[]
+  locationClosures    LocationClosure[]
+  locationAssignments LocationUserAssignment[]
+  incidents           Incident[]
+  auditLogs           AuditLog[]
+
+  @@unique([companyId, code])
+  @@index([companyId, status])
+  @@index([companyId, startDate, endDate])
+}
+
+model EventUser {
+  id         String    @id @default(cuid())
+  eventId    String
+  userId     String
+  role       EventRole
+  assignedAt DateTime  @default(now())
+  event      Event     @relation(fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([userId, role])
+}
+
+model Booth {
+  id          String     @id @default(cuid())
+  eventId     String
+  name        String
+  code        String
+  description String?    @db.Text
+  active      Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  deletedAt   DateTime?
+  event       Event      @relation(fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  bars        Bar[]
+  locations   Location[]
+
+  @@unique([eventId, code])
+  @@index([eventId, active])
+}
+
+model Bar {
+  id           String     @id @default(cuid())
+  eventId      String
+  boothId      String?
+  clientUserId String?
+  name         String
+  code         String
+  description  String?    @db.Text
+  active       Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  deletedAt    DateTime?
+  event        Event      @relation(fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  booth        Booth?     @relation(fields: [boothId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  clientUser   User?      @relation("BarClient", fields: [clientUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  locations    Location[]
+
+  @@unique([eventId, code])
+  @@index([eventId, boothId, active])
+  @@index([clientUserId])
+}
+
+model CupType {
+  id            String              @id @default(cuid())
+  companyId     String
+  name          String
+  code          String
+  capacityMl    Int?
+  description   String?             @db.Text
+  active        Boolean             @default(true)
+  cost          Decimal?            @db.Decimal(10, 2)
+  deposit       Decimal?            @db.Decimal(10, 2)
+  externalCode  String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  deletedAt     DateTime?
+  company       Company             @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  movementItems StockMovementItem[]
+
+  @@unique([companyId, code])
+  @@index([companyId, active])
+}
+
+model Location {
+  id                   String                   @id @default(cuid())
+  companyId            String
+  eventId              String?
+  boothId              String?
+  barId                String?
+  type                 LocationType
+  name                 String
+  code                 String
+  active               Boolean                  @default(true)
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+  deletedAt            DateTime?
+  company              Company                  @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  event                Event?                   @relation(fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  booth                Booth?                   @relation(fields: [boothId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  bar                  Bar?                     @relation(fields: [barId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  sourceMovements      StockMovement[]          @relation("MovementSource")
+  destinationMovements StockMovement[]          @relation("MovementDestination")
+  cashMovements        CashMovement[]
+  cashSessions         CashSession[]
+  closures             LocationClosure[]        @relation("LocationClosures")
+  closureDestinations  LocationClosure[]        @relation("LocationClosureDestinations")
+  incidents            Incident[]
+  assignments          LocationUserAssignment[]
+
+  @@unique([companyId, code])
+  @@index([companyId, eventId, type])
+  @@index([eventId, boothId, barId])
+}
+
+model LocationUserAssignment {
+  id         String           @id @default(cuid())
+  companyId  String
+  eventId    String
+  locationId String
+  userId     String
+  role       LocationUserRole
+  active     Boolean          @default(true)
+  assignedAt DateTime         @default(now())
+  company    Company          @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  event      Event            @relation(fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  location   Location         @relation(fields: [locationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  user       User             @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([locationId, userId])
+  @@index([eventId, locationId, active])
+  @@index([userId, active])
+}
+
+model StockMovement {
+  id                    String              @id @default(cuid())
+  companyId             String
+  eventId               String?
+  sourceLocationId      String?
+  destinationLocationId String?
+  createdByUserId       String
+  type                  StockMovementType
+  status                StockMovementStatus @default(POSTED)
+  notes                 String?             @db.Text
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  company               Company             @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  event                 Event?              @relation(fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  sourceLocation        Location?           @relation("MovementSource", fields: [sourceLocationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  destinationLocation   Location?           @relation("MovementDestination", fields: [destinationLocationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  createdBy             User                @relation("MovementCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  items                 StockMovementItem[]
+  deliveryNote          DeliveryNote?
+  cashMovement          CashMovement?
+  locationClosure       LocationClosure?
+
+  @@index([companyId, eventId, createdAt])
+  @@index([sourceLocationId, createdAt])
+  @@index([destinationLocationId, createdAt])
+  @@index([createdByUserId, createdAt])
+  @@index([status, type])
+}
+
+model LocationClosure {
+  id                    String        @id @default(cuid())
+  companyId             String
+  eventId               String
+  locationId            String
+  destinationLocationId String
+  stockMovementId       String        @unique
+  closedByUserId        String
+  closedAt              DateTime      @default(now())
+  notes                 String?       @db.Text
+  company               Company       @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  event                 Event         @relation(fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  location              Location      @relation("LocationClosures", fields: [locationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  destinationLocation   Location      @relation("LocationClosureDestinations", fields: [destinationLocationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  stockMovement         StockMovement @relation(fields: [stockMovementId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  closedBy              User          @relation(fields: [closedByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([companyId, eventId, locationId])
+}
+
+model StockMovementItem {
+  id              String         @id @default(cuid())
+  stockMovementId String
+  cupTypeId       String
+  quantity        Int
+  condition       StockCondition
+  stockMovement   StockMovement  @relation(fields: [stockMovementId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  cupType         CupType        @relation(fields: [cupTypeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([stockMovementId, cupTypeId, condition])
+  @@index([cupTypeId, condition])
+}
+
+model DeliveryNote {
+  id              String              @id @default(cuid())
+  companyId       String
+  eventId         String?
+  stockMovementId String?             @unique
+  number          String
+  type            DeliveryNoteType
+  status          DeliveryNoteStatus  @default(DRAFT)
+  issuedAt        DateTime?
+  notes           String?             @db.Text
+  pdfPath         String?
+  createdByUserId String
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  company         Company             @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  event           Event?              @relation(fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  stockMovement   StockMovement?      @relation(fields: [stockMovementId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  createdBy       User                @relation("DeliveryNoteCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  signatures      Signature[]
+  emailLogs       DeliveryNoteEmail[]
+
+  @@unique([companyId, number])
+  @@index([companyId, eventId, status])
+  @@index([createdAt])
+}
+
+model Signature {
+  id             String        @id @default(cuid())
+  deliveryNoteId String
+  userId         String?
+  signerName     String
+  type           SignatureType
+  imagePath      String
+  signedAt       DateTime
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime      @default(now())
+  deliveryNote   DeliveryNote  @relation(fields: [deliveryNoteId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  user           User?         @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([deliveryNoteId, type])
+  @@index([deliveryNoteId, signedAt])
+}
+
+model DocumentSequence {
+  id           String  @id @default(cuid())
+  companyId    String
+  eventId      String
+  documentType String
+  nextValue    Int     @default(1)
+  company      Company @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([companyId, eventId, documentType])
+  @@index([eventId, documentType])
+}
+
+model DeliveryNoteEmail {
+  id             String                  @id @default(cuid())
+  deliveryNoteId String
+  sentByUserId   String
+  recipient      String
+  subject        String
+  sentAt         DateTime                @default(now())
+  status         DeliveryNoteEmailStatus
+  error          String?                 @db.Text
+  deliveryNote   DeliveryNote            @relation(fields: [deliveryNoteId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  sentBy         User                    @relation(fields: [sentByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([deliveryNoteId, sentAt])
+  @@index([sentByUserId, sentAt])
+}
+
+model CashMovement {
+  id              String           @id @default(cuid())
+  companyId       String
+  eventId         String?
+  locationId      String?
+  cashSessionId   String?
+  cashTransferId  String?
+  stockMovementId String?          @unique
+  createdByUserId String
+  type            CashMovementType
+  amount          Decimal          @db.Decimal(12, 2)
+  concept         String
+  notes           String?          @db.Text
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  company         Company          @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  event           Event?           @relation(fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  location        Location?        @relation(fields: [locationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  cashSession     CashSession?     @relation(fields: [cashSessionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  cashTransfer    CashTransfer?    @relation(fields: [cashTransferId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  stockMovement   StockMovement?   @relation(fields: [stockMovementId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  createdBy       User             @relation("CashCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([companyId, eventId, createdAt])
+  @@index([locationId, createdAt])
+  @@index([type, createdAt])
+  @@index([cashSessionId, createdAt])
+  @@index([cashTransferId])
+}
+
+model CashSession {
+  id                String            @id @default(cuid())
+  companyId         String
+  eventId           String
+  locationId        String
+  openedByUserId    String
+  status            CashSessionStatus @default(OPEN)
+  openedAt          DateTime          @default(now())
+  openingAmount     Decimal           @db.Decimal(12, 2)
+  closedAt          DateTime?
+  closedByUserId    String?
+  closingAmount     Decimal?          @db.Decimal(12, 2)
+  difference        Decimal?          @db.Decimal(12, 2)
+  notes             String?           @db.Text
+  company           Company           @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  event             Event             @relation(fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  location          Location          @relation(fields: [locationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  openedBy          User              @relation("CashSessionOpenedBy", fields: [openedByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  closedBy          User?             @relation("CashSessionClosedBy", fields: [closedByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  movements         CashMovement[]
+  outgoingTransfers CashTransfer[]    @relation("CashTransferOrigin")
+  incomingTransfers CashTransfer[]    @relation("CashTransferDestination")
+
+  @@index([companyId, eventId, status])
+  @@index([locationId, status])
+  @@index([openedAt])
+}
+
+model CashTransfer {
+  id                   String         @id @default(cuid())
+  companyId            String
+  eventId              String
+  originSessionId      String
+  destinationSessionId String
+  createdByUserId      String
+  amount               Decimal        @db.Decimal(12, 2)
+  concept              String
+  notes                String?        @db.Text
+  createdAt            DateTime       @default(now())
+  company              Company        @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  event                Event          @relation(fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  originSession        CashSession    @relation("CashTransferOrigin", fields: [originSessionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  destinationSession   CashSession    @relation("CashTransferDestination", fields: [destinationSessionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  createdBy            User           @relation(fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  movements            CashMovement[]
+
+  @@index([companyId, eventId, createdAt])
+  @@index([originSessionId, createdAt])
+  @@index([destinationSessionId, createdAt])
+}
+
+model Incident {
+  id              String         @id @default(cuid())
+  companyId       String
+  eventId         String?
+  locationId      String?
+  createdByUserId String
+  type            IncidentType
+  title           String
+  description     String?        @db.Text
+  status          IncidentStatus @default(OPEN)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  company         Company        @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  event           Event?         @relation(fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  location        Location?      @relation(fields: [locationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  createdBy       User           @relation("IncidentCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([companyId, eventId, status])
+  @@index([locationId, createdAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  companyId  String
+  userId     String?
+  eventId    String?
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  user       User?    @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  event      Event?   @relation(fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([companyId, entityType, entityId])
+  @@index([eventId, createdAt])
+  @@index([userId, createdAt])
+}

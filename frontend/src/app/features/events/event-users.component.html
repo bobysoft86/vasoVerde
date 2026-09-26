@@ -1,0 +1,35 @@
+<div class="section-head">
+  <div>
+    <h2>Usuarios asignados</h2>
+    <p>Personas con acceso operativo a este evento.</p>
+  </div>
+</div>
+<mat-card class="form-card" *ngIf="users().length"
+  ><form [formGroup]="form" (ngSubmit)="assign()">
+    <mat-form-field appearance="outline"
+      ><mat-label>Usuario</mat-label
+      ><mat-select formControlName="userId"
+        ><mat-option *ngFor="let user of availableUsers()" [value]="user.id"
+          >{{ user.name }} · {{ user.email }}</mat-option
+        ></mat-select
+      ></mat-form-field
+    ><mat-form-field appearance="outline"
+      ><mat-label>Rol</mat-label
+      ><mat-select formControlName="role"
+        ><mat-option value="EVENT_MANAGER">Responsable de evento</mat-option
+        ><mat-option value="OPERATOR">Operario</mat-option
+        ><mat-option value="VIEWER">Consulta</mat-option></mat-select
+      ></mat-form-field
+    ><button mat-flat-button color="primary" [disabled]="form.invalid">Asignar</button>
+  </form></mat-card
+>
+<div class="list">
+  <mat-card *ngFor="let item of assignments()"
+    ><div>
+      <strong>{{ item.user.name }}</strong
+      ><small>{{ item.user.email }} · {{ item.role }}</small>
+    </div>
+    <button mat-button color="warn" (click)="remove(item.userId)">Quitar</button></mat-card
+  >
+</div>
+<p class="empty" *ngIf="!assignments().length">No hay usuarios asignados todavía.</p>

@@ -1,0 +1,31 @@
+<div class="section-head">
+  <div>
+    <h2>Casetas</h2>
+    <p>Espacios operativos del evento.</p>
+  </div>
+  <button mat-flat-button color="primary" (click)="showForm.set(!showForm())">
+    <mat-icon>add</mat-icon> Nueva caseta
+  </button>
+</div>
+<mat-card *ngIf="showForm()" class="form-card"
+  ><form [formGroup]="form" (ngSubmit)="save()">
+    <mat-form-field appearance="outline"
+      ><mat-label>Nombre</mat-label><input matInput formControlName="name" /></mat-form-field
+    ><mat-form-field appearance="outline"
+      ><mat-label>Código</mat-label><input matInput formControlName="code" /></mat-form-field
+    ><mat-form-field appearance="outline"
+      ><mat-label>Descripción</mat-label
+      ><input matInput formControlName="description" /></mat-form-field
+    ><button mat-flat-button color="primary" [disabled]="form.invalid">Guardar</button>
+  </form></mat-card
+>
+<div class="list">
+  <mat-card *ngFor="let booth of booths()"
+    ><div>
+      <strong>{{ booth.name }}</strong
+      ><small>{{ booth.code }} · {{ booth._count?.bars ?? 0 }} barras</small>
+    </div>
+    <span [class.off]="!booth.active">{{ booth.active ? 'Activo' : 'Inactivo' }}</span></mat-card
+  >
+</div>
+<p class="empty" *ngIf="!loading() && booths().length === 0">No hay casetas creadas todavía.</p>

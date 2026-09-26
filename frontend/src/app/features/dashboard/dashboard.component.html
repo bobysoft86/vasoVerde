@@ -1,0 +1,59 @@
+<section class="page-heading">
+  <div>
+    <p class="eyebrow">RESUMEN OPERATIVO</p>
+    <h1>Buenos días, equipo</h1>
+    <p class="subtitle">Indicadores globales de Vaso Verde.</p>
+  </div>
+  <span class="date">{{ today }}</span>
+</section>
+<section class="metrics" *ngIf="data() as item">
+  <mat-card
+    ><span>Eventos activos</span><strong>{{ item.events.active }}</strong
+    ><small>{{ item.events.planned }} planificados</small></mat-card
+  ><mat-card
+    ><span>Vasos en circulación</span><strong>{{ item.stock.inCirculation | number }}</strong
+    ><small>{{ item.stock.clean | number }} limpios</small></mat-card
+  ><mat-card
+    ><span>Albaranes pendientes</span><strong>{{ item.deliveryNotes.pendingSignature }}</strong
+    ><small>Requieren firma</small></mat-card
+  ><mat-card
+    ><span>Incidencias abiertas</span><strong>{{ item.incidents.open }}</strong
+    ><small>Operativas</small></mat-card
+  >
+</section>
+<section class="status-grid">
+  <mat-card class="status-card"
+    ><div class="status-icon api"><mat-icon>hub</mat-icon></div>
+    <div>
+      <span>API</span><strong>{{ apiStatus() }}</strong>
+    </div>
+    <i [class.online]="apiStatus() === 'Connected'"></i></mat-card
+  ><mat-card class="status-card"
+    ><div class="status-icon db"><mat-icon>storage</mat-icon></div>
+    <div>
+      <span>Base de datos</span><strong>{{ databaseStatus() }}</strong>
+    </div>
+    <i [class.online]="databaseStatus() === 'Connected'"></i
+  ></mat-card>
+</section>
+<section class="quick" *ngIf="data() as item">
+  <mat-card
+    ><h3>Stock global</h3>
+    <div class="stock-row">
+      <span>Limpios</span><b>{{ item.stock.clean | number }}</b>
+    </div>
+    <div class="stock-row">
+      <span>Sucios</span><b>{{ item.stock.dirty | number }}</b>
+    </div>
+    <div class="stock-row">
+      <span>Dañados</span><b>{{ item.stock.damaged | number }}</b>
+    </div>
+    <a routerLink="/events">Ver eventos</a></mat-card
+  ><mat-card
+    ><h3>Alertas</h3>
+    <p *ngFor="let alert of item.alerts" class="alert">
+      <mat-icon>info</mat-icon>{{ alert.message }}
+    </p>
+    <p *ngIf="!item.alerts.length" class="empty">No hay alertas activas.</p></mat-card
+  >
+</section>

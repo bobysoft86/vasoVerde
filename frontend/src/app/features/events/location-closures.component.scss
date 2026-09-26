@@ -1,0 +1,63 @@
+.back {
+  color: #277351;
+  text-decoration: none;
+}
+.head h2 {
+  margin: 12px 0 5px;
+  color: #20382b;
+}
+.head p {
+  color: #77877e;
+}
+.card {
+  padding: 22px;
+  margin-top: 18px;
+}
+.form {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.table {
+  border: 1px solid #e5eee8;
+  border-radius: 8px;
+  overflow: auto;
+}
+.row {
+  display: grid;
+  grid-template-columns: 1.5fr repeat(3, 110px);
+  gap: 10px;
+  align-items: center;
+  padding: 9px 12px;
+  border-bottom: 1px solid #eef3ef;
+}
+.header {
+  font-size: 12px;
+  color: #718078;
+  background: #f6faf7;
+}
+.row input {
+  width: 90px;
+  padding: 8px;
+  border: 1px solid #cad8ce;
+  border-radius: 5px;
+}
+.notes {
+  width: 100%;
+  margin-top: 18px;
+}
+.success {
+  color: #18734a;
+}
+.error {
+  color: #a13d31;
+}
+@media (max-width: 700px) {
+  .row {
+    grid-template-columns: 1.2fr repeat(3, 85px);
+    font-size: 12px;
+  }
+  .row input {
+    width: 70px;
+  }
+}

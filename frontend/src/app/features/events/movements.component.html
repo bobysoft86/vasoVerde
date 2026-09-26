@@ -1,0 +1,23 @@
+<div class="head">
+  <div>
+    <h2>Movimientos</h2>
+    <p>Histórico inmutable de entradas, salidas y traslados.</p>
+  </div>
+  <a mat-flat-button color="primary" [routerLink]="['new']">Nuevo movimiento</a>
+</div>
+<div class="list">
+  <mat-card *ngFor="let movement of movements()"
+    ><div>
+      <strong>{{ movement.type }}</strong
+      ><small
+        >{{ movement.createdAt | date: 'dd/MM/yyyy HH:mm' }} · {{ movement.createdBy.name }}</small
+      >
+    </div>
+    <div class="route">
+      {{ movement.sourceLocation?.name || 'Entrada' }} →
+      {{ movement.destinationLocation?.name || 'Salida' }}
+    </div>
+    <span>{{ movement.items.length }} línea(s)</span></mat-card
+  >
+</div>
+<p class="empty" *ngIf="!loading() && !movements().length">No hay movimientos.</p>

@@ -1,0 +1,88 @@
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+.kpis mat-card,
+.columns mat-card {
+  padding: 20px;
+}
+.kpis span {
+  color: #77877e;
+  font-size: 13px;
+}
+.kpis strong {
+  display: block;
+  font-size: 29px;
+  color: #20382b;
+  margin: 10px 0;
+}
+.kpis small {
+  color: #87938d;
+}
+.kpis a {
+  color: #277351;
+  text-decoration: none;
+}
+.columns {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  gap: 14px;
+  margin-top: 16px;
+}
+.columns h3 {
+  color: #286547;
+  margin-top: 0;
+}
+.alert {
+  display: flex;
+  gap: 10px;
+  padding: 11px 0;
+  border-bottom: 1px solid #eef3ef;
+}
+.alert mat-icon {
+  color: #d18b2c;
+}
+.alert mat-icon.critical {
+  color: #b33d31;
+}
+.empty {
+  color: #87938d;
+}
+.row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px;
+  border-bottom: 1px solid #eef3ef;
+  padding: 11px 0;
+}
+.row small {
+  display: block;
+  color: #87938d;
+  font-weight: normal;
+}
+.row em {
+  grid-column: 1/-1;
+  color: #52645c;
+  font-size: 12px;
+  font-style: normal;
+}
+.quick {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+@media (max-width: 900px) {
+  .kpis {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .columns {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 550px) {
+  .kpis {
+    grid-template-columns: 1fr;
+  }
+}

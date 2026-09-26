@@ -1,0 +1,43 @@
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.head h1 {
+  margin: 4px 0;
+  color: #20382b;
+}
+.head p:not(.eyebrow) {
+  color: #77877e;
+}
+.form-card {
+  padding: 18px;
+  margin: 18px 0;
+}
+.form-card form {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.list {
+  display: grid;
+  gap: 10px;
+  margin-top: 20px;
+}
+.list mat-card {
+  padding: 18px;
+  display: flex;
+  justify-content: space-between;
+}
+.list small {
+  display: block;
+  color: #829189;
+  margin-top: 5px;
+}
+.list span {
+  color: #2e815d;
+  font-size: 12px;
+}
+.list .off {
+  color: #a16f42;
+}

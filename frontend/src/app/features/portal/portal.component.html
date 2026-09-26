@@ -1,0 +1,45 @@
+<main class="portal">
+  <header class="portal-head">
+    <div>
+      <div class="brand"><span>VV</span><strong>Vaso Verde</strong></div>
+      <p class="eyebrow">PORTAL OPERATIVO</p>
+      <h1>Hola, {{ auth.currentUser()?.name }}</h1>
+      <p class="subtitle">Selecciona un evento para comenzar a trabajar.</p>
+    </div>
+    <button mat-icon-button (click)="logout()" aria-label="Cerrar sesión">
+      <mat-icon>logout</mat-icon>
+    </button>
+  </header>
+  <section class="install" *ngIf="showInstallHint">
+    <mat-icon>get_app</mat-icon
+    ><span>Puedes añadir Vaso Verde a la pantalla de inicio desde el menú del navegador.</span>
+  </section>
+  <div class="cards">
+    <a
+      class="event-card"
+      *ngFor="let event of events()"
+      [routerLink]="['/events', event.id, 'operate']"
+      ><div class="card-top">
+        <span class="status">{{ event.status }}</span
+        ><mat-icon>arrow_forward</mat-icon>
+      </div>
+      <h2>{{ event.name }}</h2>
+      <p class="code">{{ event.code }}</p>
+      <p class="location" *ngIf="event.location">
+        <mat-icon>location_on</mat-icon>{{ event.location }}
+      </p>
+      <div class="card-foot">
+        <span
+          >{{ event.startDate | date: 'dd/MM/yyyy' }} —
+          {{ event.endDate | date: 'dd/MM/yyyy' }}</span
+        ><strong>Operar evento</strong>
+      </div></a
+    >
+  </div>
+  <div class="empty" *ngIf="!loading() && !events().length">
+    <mat-icon>event_busy</mat-icon>
+    <h2>No tienes eventos asignados</h2>
+    <p>Contacta con el responsable para que te asigne un evento.</p>
+  </div>
+  <p class="error" *ngIf="error()">{{ error() }}</p>
+</main>

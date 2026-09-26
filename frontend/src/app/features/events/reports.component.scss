@@ -1,0 +1,34 @@
+.back {
+  color: #277351;
+  text-decoration: none;
+}
+.intro {
+  color: #77877e;
+}
+.cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-top: 22px;
+}
+.cards mat-card {
+  padding: 22px;
+}
+.cards mat-icon {
+  color: #2e815d;
+}
+.cards h3 {
+  color: #20382b;
+}
+.cards p {
+  color: #52645c;
+  min-height: 40px;
+}
+.error {
+  color: #a13d31;
+}
+@media (max-width: 650px) {
+  .cards {
+    grid-template-columns: 1fr;
+  }
+}

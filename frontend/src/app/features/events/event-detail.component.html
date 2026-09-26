@@ -1,0 +1,30 @@
+<ng-container *ngIf="event() as item; else loading"
+  ><header class="event-header">
+    <div>
+      <a routerLink="/events" class="back"><mat-icon>arrow_back</mat-icon> Eventos</a>
+      <p class="eyebrow">EVENTO</p>
+      <h1>{{ item.name }}</h1>
+      <p class="meta">
+        {{ item.code }} · {{ item.location || 'Sin ubicación' }} ·
+        {{ item.startDate | date: 'dd/MM/yyyy' }} — {{ item.endDate | date: 'dd/MM/yyyy' }}
+      </p>
+    </div>
+    <span class="status">{{ item.status }}</span
+    ><a mat-stroked-button color="primary" [routerLink]="['/events', item.id, 'edit']"
+      ><mat-icon>edit</mat-icon> Editar evento</a
+    >
+  </header>
+  <nav class="tabs">
+    <a [routerLink]="['/events', item.id, 'overview']" routerLinkActive="active">Resumen</a>
+    <a [routerLink]="['/events', item.id, 'movements']" routerLinkActive="active">Movimientos</a>
+    <a [routerLink]="['/events', item.id, 'stock']" routerLinkActive="active">Stock</a
+    ><a [routerLink]="['/events', item.id, 'closures']" routerLinkActive="active">Cierres</a
+    ><a [routerLink]="['/events', item.id, 'delivery-notes']" routerLinkActive="active">Albaranes</a
+    ><a [routerLink]="['/events', item.id, 'booths']" routerLinkActive="active">Casetas</a
+    ><a [routerLink]="['/events', item.id, 'bars']" routerLinkActive="active">Barras</a
+    ><a [routerLink]="['/events', item.id, 'users']" routerLinkActive="active">Usuarios</a
+    ><a [routerLink]="['/events', item.id, 'reports']" routerLinkActive="active">Informes</a
+    ><a [routerLink]="['/events', item.id, 'cash']" routerLinkActive="active">Caja</a>
+  </nav>
+  <main class="event-content"><router-outlet /></main></ng-container
+><ng-template #loading><div class="empty">Cargando evento...</div></ng-template>
