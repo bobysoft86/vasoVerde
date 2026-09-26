@@ -23,6 +23,9 @@ services:
       NODE_ENV: production
       PORT: 3000
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      # Prisma still reads this variable from schema.prisma during startup.
+      # It is not used by `migrate deploy`; use DATABASE_URL if no shadow DB exists.
+      SHADOW_DATABASE_URL: ${SHADOW_DATABASE_URL:?SHADOW_DATABASE_URL is required}
       FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL is required}
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET is required}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
