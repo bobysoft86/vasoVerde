@@ -25,6 +25,7 @@ RUN apt-get update \
 COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY prisma ./prisma
+RUN npx prisma generate
 COPY --from=build /app/dist ./dist
 
 EXPOSE 3000
