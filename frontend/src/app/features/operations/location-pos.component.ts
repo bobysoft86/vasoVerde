@@ -153,6 +153,14 @@ export class LocationPosComponent {
       .filter((item) => item.cupTypeId === this.cupTypeId && item.condition === condition)
       .reduce((total, item) => total + Number(item.quantity), 0) ?? 0;
   }
+  stockLabel(cupTypeId: string, locationId = this.locationId) {
+    const values = (['CLEAN', 'DIRTY', 'DAMAGED'] as const).map((condition) =>
+      this.stock()?.locations?.find((entry) => entry.location.id === locationId)?.items
+        .filter((item) => item.cupTypeId === cupTypeId && item.condition === condition)
+        .reduce((total, item) => total + Number(item.quantity), 0) ?? 0,
+    );
+    return `L ${values[0]} · S ${values[1]} · D ${values[2]}`;
+  }
   history() {
     return this.sessions().flatMap((session) => session.movements)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 12);

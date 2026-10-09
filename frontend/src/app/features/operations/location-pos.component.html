@@ -48,7 +48,7 @@
               ><mat-select [(ngModel)]="cupTypeId"
                 ><mat-option *ngFor="let cup of cups()" [value]="cup.id">{{
                   cup.name
-                }}</mat-option></mat-select
+                }} · {{ stockLabel(cup.id) }}</mat-option></mat-select
               ></mat-form-field
             ><mat-form-field appearance="outline"
               ><mat-label>Unidades</mat-label
@@ -117,7 +117,7 @@
             ><mat-select [(ngModel)]="cupTypeId"
               ><mat-option *ngFor="let cup of cups()" [value]="cup.id">{{
                 cup.name
-              }}</mat-option></mat-select
+              }} · {{ stockLabel(cup.id, barType === 'DELIVERY' ? sourceId : locationId) }}</mat-option></mat-select
             ></mat-form-field
           ><mat-form-field appearance="outline"
             ><mat-label>Estado</mat-label
