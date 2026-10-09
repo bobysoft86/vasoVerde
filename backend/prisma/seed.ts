@@ -206,8 +206,11 @@ async function main() {
   await movement('Seed: suministro inicial gratuito a Barra Norte 1', booth.id, bar.id, StockMovementType.DELIVERY, [[cup33.id, 1000, StockCondition.CLEAN]], event.id);
   await movement('Seed: segunda entrega con cargo a Barra Norte 1', booth.id, bar.id, StockMovementType.DELIVERY, [[cup33.id, 200, StockCondition.CLEAN]], event.id, { chargeAmount: 200, cashSessionId: barCash.id });
   const barReturn = await movement('Seed: recogida de Barra Norte 1', bar.id, booth.id, StockMovementType.RETURN, [[cup33.id, 600, StockCondition.DIRTY], [cup33.id, 100, StockCondition.CLEAN], [cup50.id, 25, StockCondition.DAMAGED]], event.id);
-  await movement('Seed: envío de sucios a zona de lavado', booth.id, cleaning.id, StockMovementType.CLEANING_SEND, [[cup33.id, 600, StockCondition.DIRTY]], event.id);
-  await movement('Seed: retorno de vasos limpios desde lavado', cleaning.id, central.id, StockMovementType.CLEANING_RETURN, [[cup33.id, 600, StockCondition.CLEAN]], event.id);
+  await movement('Seed: consolidación de recogidas en almacén del evento', booth.id, eventWarehouse.id, StockMovementType.RETURN, [[cup33.id, 600, StockCondition.DIRTY], [cup33.id, 100, StockCondition.CLEAN], [cup50.id, 25, StockCondition.DAMAGED]], event.id);
+  await movement('Seed: retorno de vasos recogidos a nave central', eventWarehouse.id, central.id, StockMovementType.RETURN, [[cup33.id, 600, StockCondition.DIRTY], [cup33.id, 100, StockCondition.CLEAN], [cup50.id, 25, StockCondition.DAMAGED]], event.id);
+  await movement('Seed: nave central envía sucios a zona de lavado', central.id, cleaning.id, StockMovementType.CLEANING_SEND, [[cup33.id, 600, StockCondition.DIRTY]], null);
+  await movement('Seed: zona de lavado devuelve limpios a nave central', cleaning.id, central.id, StockMovementType.CLEANING_RETURN, [[cup33.id, 600, StockCondition.CLEAN]], null);
+  await movement('Seed: nave central reenvía vasos limpios al evento', central.id, eventWarehouse.id, StockMovementType.DELIVERY, [[cup33.id, 600, StockCondition.CLEAN]], event.id);
   await movement('Seed: vasos perdidos en evento', eventWarehouse.id, null, StockMovementType.LOSS, [[cup33.id, 30, StockCondition.CLEAN]], event.id);
   await movement('Seed: vasos rotos en Caseta Norte', booth.id, null, StockMovementType.BREAKAGE, [[cup50.id, 10, StockCondition.DAMAGED]], event.id);
 

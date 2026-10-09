@@ -43,4 +43,37 @@ describe('stock ledger', () => {
     ])).not.toThrow();
     expect(balance.get('cup:DIRTY')).toBe(0);
   });
+
+  it('completes the central warehouse washing and re-dispatch cycle', () => {
+    const balance = balanceFor([
+      {
+        sourceLocationId: null, destinationLocationId: 'central',
+        type: StockMovementType.INITIAL_LOAD, createdAt: new Date('2026-01-01'),
+        items: [{ cupTypeId: 'cup', quantity: 100, condition: StockCondition.CLEAN }],
+      },
+      {
+        sourceLocationId: 'event-warehouse', destinationLocationId: 'central',
+        type: StockMovementType.RETURN, createdAt: new Date('2026-01-02'),
+        items: [{ cupTypeId: 'cup', quantity: 40, condition: StockCondition.DIRTY }],
+      },
+      {
+        sourceLocationId: 'central', destinationLocationId: 'washing',
+        type: StockMovementType.CLEANING_SEND, createdAt: new Date('2026-01-03'),
+        items: [{ cupTypeId: 'cup', quantity: 40, condition: StockCondition.DIRTY }],
+      },
+      {
+        sourceLocationId: 'washing', destinationLocationId: 'central',
+        type: StockMovementType.CLEANING_RETURN, createdAt: new Date('2026-01-04'),
+        items: [{ cupTypeId: 'cup', quantity: 40, condition: StockCondition.CLEAN }],
+      },
+      {
+        sourceLocationId: 'central', destinationLocationId: 'event-warehouse',
+        type: StockMovementType.DELIVERY, createdAt: new Date('2026-01-05'),
+        items: [{ cupTypeId: 'cup', quantity: 50, condition: StockCondition.CLEAN }],
+      },
+    ], 'central');
+
+    expect(balance.get('cup:CLEAN')).toBe(90);
+    expect(balance.get('cup:DIRTY')).toBe(0);
+  });
 });
