@@ -765,7 +765,8 @@ export class CashService {
     });
     if (!location) throw new NotFoundException('Bar not found');
     const result = await this.calculateBarSettlement(this.prisma, user.companyId, eventId, locationId);
-    return { location, ...result, balanceAmount: Number(result.balanceAmount), prepaidAmount: Number(result.prepaidAmount), missingAmount: Number(result.missingAmount), lines: result.lines.map((line) => ({ ...line, unitPrice: Number(line.unitPrice), missingAmount: Number(line.missingAmount) })) };
+    const closure = await this.prisma.locationClosure.findFirst({ where: { eventId, locationId } });
+    return { location, closed: !!closure, ...result, balanceAmount: Number(result.balanceAmount), prepaidAmount: Number(result.prepaidAmount), missingAmount: Number(result.missingAmount), lines: result.lines.map((line) => ({ ...line, unitPrice: Number(line.unitPrice), missingAmount: Number(line.missingAmount) })) };
   }
   async settleBar(user: AuthUser, eventId: string, dto: ConfirmBarSettlementDto) {
     const result = await this.prisma.$transaction(async (tx) => {

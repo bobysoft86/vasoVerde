@@ -148,6 +148,44 @@
           Guardar y generar albarán
         </button></mat-card
       >
+      <mat-card class="bar-close">
+        <h2>Cierre de barra</h2>
+        <p class="hint">El stock teórico se calcula con las entregas y recogidas registradas. Introduce el recuento real para cerrar, aunque la barra tenga vasos de más o de menos.</p>
+        <div class="bar-close-destination">
+          <mat-form-field appearance="outline">
+            <mat-label>Destino de la recogida final</mat-label>
+            <mat-select [(ngModel)]="destinationId">
+              <mat-option *ngFor="let item of counterparts()" [value]="item.id">{{ item.name }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+        <div class="bar-stock-table">
+          <div class="bar-stock-row header"><span>Vaso</span><span>Stock teórico</span><span>Recuento final</span></div>
+          <div class="bar-stock-row" *ngFor="let cup of cups()">
+            <strong>{{ cup.name }}</strong>
+            <span>{{ theoreticalStock(cup.id) }}</span>
+            <div class="bar-counts">
+              <input type="number" min="0" [(ngModel)]="barCounts[cup.id].CLEAN" placeholder="Limpios" />
+              <input type="number" min="0" [(ngModel)]="barCounts[cup.id].DIRTY" placeholder="Sucios" />
+              <input type="number" min="0" [(ngModel)]="barCounts[cup.id].DAMAGED" placeholder="Dañados" />
+            </div>
+          </div>
+        </div>
+        <button mat-flat-button color="primary" (click)="closeBar()" [disabled]="barClosed()">
+          {{ barClosed() ? 'Barra cerrada' : 'Cerrar barra y calcular liquidación' }}
+        </button>
+      </mat-card>
+      <mat-card class="bar-settlement" *ngIf="barSettlement() as settlement">
+        <h2>Liquidación económica</h2>
+        <p>Entregados: <strong>{{ settlement.totalDelivered }}</strong> · Recogidos: <strong>{{ settlement.totalCollected }}</strong> · Anticipado: <strong>{{ settlement.prepaidAmount | number: '1.2-2' }} €</strong></p>
+        <p *ngIf="settlement.direction === 'COLLECT'">La barra debe abonar <strong>{{ settlement.balanceAmount | number: '1.2-2' }} €</strong>.</p>
+        <p *ngIf="settlement.direction === 'REFUND'">Debemos devolver <strong>{{ -settlement.balanceAmount | number: '1.2-2' }} €</strong>.</p>
+        <p *ngIf="settlement.direction === 'BALANCED'">No queda importe pendiente.</p>
+        <p class="hint" *ngIf="!barClosed()">La liquidación se podrá confirmar después de cerrar la barra.</p>
+        <button mat-stroked-button color="primary" (click)="settleBar()" [disabled]="!barClosed() || !session()">
+          {{ session() ? 'Registrar liquidación en caja' : 'Pendiente: abre la caja para cobrar o devolver' }}
+        </button>
+      </mat-card>
     </section></ng-container
   >
   <p class="error" *ngIf="error()">{{ error() }}</p>

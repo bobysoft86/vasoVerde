@@ -104,6 +104,41 @@
 .delivery-charge mat-form-field {
   flex: 1 1 180px;
 }
+.bar-close-destination mat-form-field {
+  width: min(100%, 360px);
+}
+.bar-stock-table {
+  margin: 14px 0;
+  overflow-x: auto;
+}
+.bar-stock-row {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) 110px minmax(220px, 1.5fr);
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid #eef3ef;
+}
+.bar-stock-row.header {
+  color: #65766d;
+  font-size: 12px;
+  font-weight: 700;
+}
+.bar-counts {
+  display: flex;
+  gap: 6px;
+}
+.bar-counts input {
+  width: 68px;
+  padding: 9px 6px;
+  border: 1px solid #ccdacf;
+  border-radius: 5px;
+  font: inherit;
+}
+.bar-settlement {
+  border-left: 4px solid #277351;
+  background: #f4faf5;
+}
 .quick h2,
 .bar-area h2 {
   margin-top: 0;

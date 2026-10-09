@@ -17,6 +17,17 @@ import { CashMovementType, CashSession } from '../../core/models/cash.model';
 import { CupType, Location, StockResponse } from '../../core/models/event.model';
 import { OperationalState } from './operational-state';
 
+interface BarSettlementPreview {
+  closed: boolean;
+  lines: Array<{ cupTypeId: string; cupTypeName: string; delivered: number; collected: number; difference: number; unitPrice: number; missingAmount: number }>;
+  totalDelivered: number;
+  totalCollected: number;
+  prepaidAmount: number;
+  missingAmount: number;
+  balanceAmount: number;
+  direction: 'COLLECT' | 'REFUND' | 'BALANCED';
+}
+
 @Component({
   selector: 'app-location-pos',
   imports: [
@@ -50,6 +61,8 @@ export class LocationPosComponent {
   readonly message = signal('');
   readonly stock = signal<StockResponse | null>(null);
   readonly sessions = signal<CashSession[]>([]);
+  readonly barSettlement = signal<BarSettlementPreview | null>(null);
+  readonly barClosed = signal(false);
   openingAmount = 0;
   cupTypeId = '';
   quantity = 1;
@@ -59,6 +72,7 @@ export class LocationPosComponent {
   destinationId = '';
   deliveryChargeable = false;
   deliveryChargeAmount = 0;
+  barCounts: Record<string, { CLEAN: number; DIRTY: number; DAMAGED: number }> = {};
   otherType: CashMovementType = 'CASH_IN';
   otherAmount = 1;
   constructor() {
@@ -72,11 +86,26 @@ export class LocationPosComponent {
       this.locations.set(data.locations.filter((item) => item.active));
       this.location.set(this.locations().find((item) => item.id === this.locationId) ?? null);
       this.cups.set(data.cups.filter((item) => item.active));
+      for (const cup of this.cups()) this.barCounts[cup.id] ??= { CLEAN: 0, DIRTY: 0, DAMAGED: 0 };
       this.sessions.set(data.sessions.filter((item) => item.location.id === this.locationId));
       this.session.set(this.sessions().find((item) => item.status === 'OPEN') ?? null);
       this.stock.set(data.stock);
       if (!this.location()) this.error.set('Este punto de trabajo no está disponible.');
+      if (this.location()?.type === 'BAR') this.loadBarSettlement();
     });
+  }
+  loadBarSettlement() {
+    this.cash.barSettlementPreview(this.eventId, this.locationId).subscribe({
+      next: (preview) => {
+        const value = preview as BarSettlementPreview;
+        this.barClosed.set(value.closed);
+        this.barSettlement.set(value);
+      },
+      error: () => this.barSettlement.set(null),
+    });
+  }
+  theoreticalStock(cupTypeId: string) {
+    return Math.max(0, this.barSettlement()?.lines.find((line) => line.cupTypeId === cupTypeId)?.difference ?? 0);
   }
   setDirection(type: 'DELIVERY' | 'RETURN') {
     if (this.state.busy()) return;
@@ -254,5 +283,33 @@ export class LocationPosComponent {
             void this.router.navigate(['/events', this.eventId, 'delivery-notes', movement.deliveryNote.id]);
           }
       }, 'Movimiento guardado. Consulta el albarán en el historial.');
+  }
+  closeBar() {
+    if (this.writesBlocked() || this.location()?.type !== 'BAR' || this.barClosed()) return;
+    const items = this.cups().flatMap((cup) =>
+      (['CLEAN', 'DIRTY', 'DAMAGED'] as const)
+        .filter((condition) => Number(this.barCounts[cup.id]?.[condition]) > 0)
+        .map((condition) => ({ cupTypeId: cup.id, condition, quantity: Number(this.barCounts[cup.id][condition]) })),
+    );
+    if (!this.counterparts().some((item) => item.id === this.destinationId)) {
+      this.error.set('Selecciona el destino de la recogida final antes de cerrar la barra.');
+      return;
+    }
+    this.write(() => this.events.closeLocation(this.eventId, this.locationId, {
+      destinationLocationId: this.destinationId,
+      items,
+      notes: 'Cierre realizado desde el POS de barra',
+      generateDeliveryNote: items.length > 0,
+    }), () => {
+      this.barClosed.set(true);
+      this.loadBarSettlement();
+    }, 'Barra cerrada. Revisa ahora la liquidación económica.');
+  }
+  settleBar() {
+    const preview = this.barSettlement();
+    const current = this.session();
+    if (!preview || !current || this.writesBlocked() || !this.barClosed()) return;
+    this.write(() => this.cash.settleBar(this.eventId, { locationId: this.locationId, cashSessionId: current.id }),
+      () => this.loadBarSettlement(), 'Liquidación de barra registrada en caja.');
   }
 }
