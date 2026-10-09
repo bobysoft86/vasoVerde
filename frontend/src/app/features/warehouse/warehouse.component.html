@@ -215,6 +215,81 @@
     <p class="error" *ngIf="cashError()">{{ cashError() }}</p>
   </mat-card>
 
+  <mat-card class="movement-form">
+    <div class="card-title">
+      <div>
+        <p class="eyebrow">OPERATIVA DE STOCK</p>
+        <h2>Mover vasos</h2>
+        <p>Recibe devoluciones, envía sucios a lavar, registra el retorno limpio y prepara el siguiente evento.</p>
+      </div>
+      <mat-icon>swap_horiz</mat-icon>
+    </div>
+
+    <div class="movement-controls">
+      <mat-form-field appearance="outline">
+        <mat-label>Operación</mat-label>
+        <mat-select [(ngModel)]="operation" (ngModelChange)="changeOperation()">
+          <mat-option *ngFor="let item of operations" [value]="item.value">{{ item.label }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" *ngIf="needsEvent">
+        <mat-label>Evento</mat-label>
+        <mat-select [(ngModel)]="eventId" (ngModelChange)="changeEvent()">
+          <mat-option *ngFor="let event of events()" [value]="event.id">{{ event.name }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" *ngIf="needsEvent">
+        <mat-label>Almacén del evento</mat-label>
+        <mat-select [(ngModel)]="eventLocationId" (ngModelChange)="loadEventStock()">
+          <mat-option *ngFor="let location of eventLocations()" [value]="location.id">{{ location.name }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <div class="route-summary">
+      <span>{{ locationName(sourceId) }}</span>
+      <mat-icon>arrow_forward</mat-icon>
+      <span>{{ locationName(destinationId) }}</span>
+    </div>
+
+    <div class="receipt-line" *ngFor="let line of lines; let i = index">
+      <mat-form-field appearance="outline">
+        <mat-label>Tipo de vaso</mat-label>
+        <mat-select [(ngModel)]="line.cupTypeId">
+          <mat-option *ngFor="let cup of cups()" [value]="cup.id">{{ cup.name }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Unidades</mat-label>
+        <input matInput type="number" min="1" [(ngModel)]="line.quantity" />
+      </mat-form-field>
+      <mat-form-field appearance="outline" *ngIf="selectableCondition">
+        <mat-label>Estado</mat-label>
+        <mat-select [(ngModel)]="line.condition">
+          <mat-option value="CLEAN">Limpio</mat-option>
+          <mat-option value="DIRTY">Sucio</mat-option>
+          <mat-option value="DAMAGED">Dañado</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <small *ngIf="operation !== 'INITIAL_LOAD'">Disponible: {{ available(line) }}</small>
+      <button mat-button color="warn" type="button" (click)="removeLine(i)" *ngIf="lines.length > 1">Quitar</button>
+    </div>
+
+    <input class="notes" type="text" placeholder="Observaciones (opcional)" [(ngModel)]="notes" />
+    <p class="error" *ngIf="validation">{{ validation }}</p>
+    <p class="error" *ngIf="eventError() || stockError()">{{ eventError() || stockError() }}</p>
+    <div class="receipt-actions">
+      <button mat-button type="button" (click)="addLine()">+ Añadir tipo</button>
+      <button mat-flat-button color="primary" type="button" (click)="submit()" [disabled]="saving()">
+        {{ saving() ? 'Registrando…' : 'Registrar movimiento' }}
+      </button>
+    </div>
+    <p class="success" *ngIf="success()">{{ success() }}</p>
+    <p class="error" *ngIf="error()">{{ error() }}</p>
+  </mat-card>
+
   <div class="areas" *ngIf="data() as overview">
     <mat-card class="area" *ngFor="let area of overview.locations">
       <div class="area-head">
