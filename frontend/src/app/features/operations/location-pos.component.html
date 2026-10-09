@@ -181,9 +181,10 @@
         <p *ngIf="settlement.direction === 'COLLECT'">La barra debe abonar <strong>{{ settlement.balanceAmount | number: '1.2-2' }} €</strong>.</p>
         <p *ngIf="settlement.direction === 'REFUND'">Debemos devolver <strong>{{ -settlement.balanceAmount | number: '1.2-2' }} €</strong>.</p>
         <p *ngIf="settlement.direction === 'BALANCED'">No queda importe pendiente.</p>
+        <p *ngIf="settlement.settlementStatus === 'PENDING'" class="pending">Liquidación pendiente registrada para reclamar o pagar posteriormente.</p>
         <p class="hint" *ngIf="!barClosed()">La liquidación se podrá confirmar después de cerrar la barra.</p>
-        <button mat-stroked-button color="primary" (click)="settleBar()" [disabled]="!barClosed() || !session()">
-          {{ session() ? 'Registrar liquidación en caja' : 'Pendiente: abre la caja para cobrar o devolver' }}
+        <button mat-stroked-button color="primary" (click)="settleBar()" [disabled]="!barClosed() || !!settlement.settlementId">
+          {{ settlement.settlementId ? 'Liquidación registrada' : session() ? 'Registrar liquidación en caja' : 'Registrar como pendiente' }}
         </button>
       </mat-card>
     </section></ng-container

@@ -766,7 +766,8 @@ export class CashService {
     if (!location) throw new NotFoundException('Bar not found');
     const result = await this.calculateBarSettlement(this.prisma, user.companyId, eventId, locationId);
     const closure = await this.prisma.locationClosure.findFirst({ where: { eventId, locationId } });
-    return { location, closed: !!closure, ...result, balanceAmount: Number(result.balanceAmount), prepaidAmount: Number(result.prepaidAmount), missingAmount: Number(result.missingAmount), lines: result.lines.map((line) => ({ ...line, unitPrice: Number(line.unitPrice), missingAmount: Number(line.missingAmount) })) };
+    const existing = await this.prisma.barSettlement.findFirst({ where: { companyId: user.companyId, eventId, locationId, status: { in: ['CONFIRMED', 'PENDING'] } }, select: { id: true, status: true } });
+    return { location, closed: !!closure, settlementId: existing?.id ?? null, settlementStatus: existing?.status ?? null, ...result, balanceAmount: Number(result.balanceAmount), prepaidAmount: Number(result.prepaidAmount), missingAmount: Number(result.missingAmount), lines: result.lines.map((line) => ({ ...line, unitPrice: Number(line.unitPrice), missingAmount: Number(line.missingAmount) })) };
   }
   async settleBar(user: AuthUser, eventId: string, dto: ConfirmBarSettlementDto) {
     const result = await this.prisma.$transaction(async (tx) => {
@@ -775,9 +776,9 @@ export class CashService {
       if (location.type !== LocationType.BAR) throw new BadRequestException('Solo se pueden liquidar barras');
       const closure = await tx.locationClosure.findFirst({ where: { eventId, locationId: dto.locationId } });
       if (!closure) throw new BadRequestException('Cierra la barra antes de liquidarla');
-      const [session] = await this.sessions(tx, user, eventId, [dto.cashSessionId]);
-      if (session.locationId !== dto.locationId) throw new BadRequestException('La caja no pertenece a esta barra');
-      const existing = await tx.barSettlement.findFirst({ where: { companyId: user.companyId, eventId, locationId: dto.locationId, status: 'CONFIRMED' } });
+      const session = dto.cashSessionId ? (await this.sessions(tx, user, eventId, [dto.cashSessionId]))[0] : null;
+      if (session && session.locationId !== dto.locationId) throw new BadRequestException('La caja no pertenece a esta barra');
+      const existing = await tx.barSettlement.findFirst({ where: { companyId: user.companyId, eventId, locationId: dto.locationId, status: { in: ['CONFIRMED', 'PENDING'] } } });
       if (existing) throw new ConflictException('Esta barra ya tiene una liquidación confirmada');
       const calculation = await this.calculateBarSettlement(tx, user.companyId, eventId, dto.locationId);
       const settlement = await tx.barSettlement.create({
@@ -786,6 +787,7 @@ export class CashService {
           eventId,
           locationId: dto.locationId,
           createdByUserId: user.sub,
+          status: !session && calculation.balanceAmount !== 0 ? 'PENDING' : 'CONFIRMED',
           totalDelivered: calculation.totalDelivered,
           totalCollected: calculation.totalCollected,
           prepaidAmount: calculation.prepaidAmount,
@@ -797,7 +799,7 @@ export class CashService {
         include: { lines: true },
       });
       const amount = Math.abs(calculation.balanceAmount);
-      if (amount > 0) {
+      if (amount > 0 && session) {
         if (calculation.balanceAmount < 0) this.assertFunds(session, amount);
         await tx.cashMovement.create({
           data: {
@@ -814,7 +816,7 @@ export class CashService {
           },
         });
       }
-      await tx.auditLog.create({ data: { companyId: user.companyId, eventId, userId: user.sub, action: 'BAR_SETTLEMENT_CONFIRMED', entityType: 'BarSettlement', entityId: settlement.id, metadata: { locationId: dto.locationId, balanceAmount: calculation.balanceAmount } } });
+      await tx.auditLog.create({ data: { companyId: user.companyId, eventId, userId: user.sub, action: session ? 'BAR_SETTLEMENT_CONFIRMED' : 'BAR_SETTLEMENT_PENDING', entityType: 'BarSettlement', entityId: settlement.id, metadata: { locationId: dto.locationId, balanceAmount: calculation.balanceAmount } } });
       return { settlement, calculation, location };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
     return { ...result.settlement, location: result.location, ...result.calculation, balanceAmount: Number(result.calculation.balanceAmount), prepaidAmount: Number(result.calculation.prepaidAmount), missingAmount: Number(result.calculation.missingAmount), lines: result.calculation.lines.map((line) => ({ ...line, unitPrice: Number(line.unitPrice), missingAmount: Number(line.missingAmount) })) };

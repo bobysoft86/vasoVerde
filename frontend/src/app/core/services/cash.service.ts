@@ -51,7 +51,7 @@ export class CashService {
   barSettlementPreview(eventId: string, locationId: string) {
     return this.http.get(`${this.url}/events/${eventId}/cash/bar-settlements/preview/${locationId}`);
   }
-  settleBar(eventId: string, data: { locationId: string; cashSessionId: string; notes?: string }) {
+  settleBar(eventId: string, data: { locationId: string; cashSessionId?: string; notes?: string }) {
     return this.http.post(`${this.url}/events/${eventId}/cash/bar-settlements`, data);
   }
 

@@ -135,6 +135,7 @@ enum CashSessionStatus {
 
 enum BarSettlementStatus {
   CONFIRMED
+  PENDING
   CANCELLED
 }
 

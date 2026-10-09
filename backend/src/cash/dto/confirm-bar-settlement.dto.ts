@@ -4,8 +4,9 @@ export class ConfirmBarSettlementDto {
   @IsString()
   locationId!: string;
 
+  @IsOptional()
   @IsString()
-  cashSessionId!: string;
+  cashSessionId?: string;
 
   @IsOptional()
   @IsString()

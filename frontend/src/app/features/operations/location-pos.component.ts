@@ -19,6 +19,8 @@ import { OperationalState } from './operational-state';
 
 interface BarSettlementPreview {
   closed: boolean;
+  settlementId: string | null;
+  settlementStatus: 'CONFIRMED' | 'PENDING' | null;
   lines: Array<{ cupTypeId: string; cupTypeName: string; delivered: number; collected: number; difference: number; unitPrice: number; missingAmount: number }>;
   totalDelivered: number;
   totalCollected: number;
@@ -308,8 +310,8 @@ export class LocationPosComponent {
   settleBar() {
     const preview = this.barSettlement();
     const current = this.session();
-    if (!preview || !current || this.writesBlocked() || !this.barClosed()) return;
-    this.write(() => this.cash.settleBar(this.eventId, { locationId: this.locationId, cashSessionId: current.id }),
+    if (!preview || this.writesBlocked() || !this.barClosed()) return;
+    this.write(() => this.cash.settleBar(this.eventId, { locationId: this.locationId, ...(current ? { cashSessionId: current.id } : {}) }),
       () => this.loadBarSettlement(), 'Liquidación de barra registrada en caja.');
   }
 }
