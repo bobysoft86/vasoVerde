@@ -12,10 +12,49 @@ import {
 } from '@prisma/client';
 import * as argon2 from 'argon2';
 import { strict as assert } from 'node:assert';
-import { balanceFor } from '../src/stock/stock-ledger';
 
 const prisma = new PrismaClient();
 const password = 'Demo1234!';
+
+// Keep the seed executable in the production runtime image, which contains
+// compiled dist/ but intentionally does not include backend/src/.
+function seedBalanceFor(movements: Array<{
+  sourceLocationId: string | null;
+  destinationLocationId: string | null;
+  type: StockMovementType;
+  createdAt: Date;
+  items: Array<{ cupTypeId: string; quantity: number; condition: StockCondition }>;
+}>, locationId: string) {
+  const balance = new Map<string, number>();
+  const consume = (cupTypeId: string, preferred: StockCondition, quantity: number) => {
+    const conditions = [preferred, ...Object.values(StockCondition).filter(condition => condition !== preferred)];
+    for (const condition of conditions) {
+      const key = `${cupTypeId}:${condition}`;
+      const used = Math.min(Math.max(0, balance.get(key) ?? 0), quantity);
+      balance.set(key, (balance.get(key) ?? 0) - used);
+      quantity -= used;
+      if (quantity === 0) break;
+    }
+  };
+  for (const movement of [...movements].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())) {
+    for (const item of movement.items) {
+      if (movement.destinationLocationId === locationId) {
+        const key = `${item.cupTypeId}:${item.condition}`;
+        balance.set(key, (balance.get(key) ?? 0) + item.quantity);
+      }
+      if (movement.sourceLocationId === locationId) {
+        if (movement.type === StockMovementType.RETURN) {
+          consume(item.cupTypeId, item.condition, item.quantity);
+        } else {
+          const condition = movement.type === StockMovementType.CLEANING_RETURN ? StockCondition.DIRTY : item.condition;
+          const key = `${item.cupTypeId}:${condition}`;
+          balance.set(key, (balance.get(key) ?? 0) - item.quantity);
+        }
+      }
+    }
+  }
+  return balance;
+}
 
 async function main() {
   // Once operations exist, demo fixtures are no longer a source of truth.
@@ -250,10 +289,10 @@ async function main() {
       await movement('Seed: serigrafiados limpios de nuevo', cleaning.id, central.id, StockMovementType.CLEANING_RETURN, [[edition.id, 80, StockCondition.CLEAN]], null);
     }
     const history = await prisma.stockMovement.findMany({ where: { companyId: company.id, status: StockMovementStatus.POSTED }, include: { items: true } });
-    assert.equal(balanceFor(history, central.id).get(`${edition.id}:CLEAN`), year === '2026' ? 780 : 1000);
+    assert.equal(seedBalanceFor(history, central.id).get(`${edition.id}:CLEAN`), year === '2026' ? 780 : 1000);
     if (year === '2026') {
-      assert.equal(balanceFor(history, cleaning.id).get(`${edition.id}:DIRTY`), 20);
-      assert.equal(balanceFor(history, eventWarehouse.id).get(`${edition.id}:CLEAN`), 200);
+      assert.equal(seedBalanceFor(history, cleaning.id).get(`${edition.id}:DIRTY`), 20);
+      assert.equal(seedBalanceFor(history, eventWarehouse.id).get(`${edition.id}:CLEAN`), 200);
     }
   }
   console.log('Serigrafías: Festival 2026 (780 limpios en nave, 20 en lavado, 200 en evento); Festival 2027 (1000 limpios en nave). Los genéricos son compartidos.');
