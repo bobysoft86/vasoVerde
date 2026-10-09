@@ -67,8 +67,8 @@ async function main() {
   for (const [name, code, capacityMl, deposit] of cupData) {
     const cup = await prisma.cupType.upsert({
       where: { companyId_code: { companyId: company.id, code } },
-      update: {},
-      create: { companyId: company.id, name, code, capacityMl, deposit },
+      update: { cost: deposit, deposit },
+      create: { companyId: company.id, name, code, capacityMl, cost: deposit, deposit },
       select: { id: true, name: true },
     });
     cups.set(code, cup);
@@ -159,19 +159,52 @@ async function main() {
   const booth = locations.get('boothNorth')!;
   const bar = locations.get('barNorth')!;
 
-  async function movement(notes: string, sourceLocationId: string | null, destinationLocationId: string | null, type: StockMovementType, items: Array<[string, number, StockCondition]>, eventId: string | null) {
+  async function movement(notes: string, sourceLocationId: string | null, destinationLocationId: string | null, type: StockMovementType, items: Array<[string, number, StockCondition]>, eventId: string | null, billing?: { chargeAmount: number; cashSessionId: string }) {
     const existing = await prisma.stockMovement.findFirst({ where: { companyId: company.id, notes } });
     const itemData = items.map(([cupTypeId, quantity, condition]) => ({ cupTypeId, quantity, condition }));
-    const data = { companyId: company.id, eventId, sourceLocationId, destinationLocationId, createdByUserId: admin.id, type, status: StockMovementStatus.POSTED, notes };
+    const data = { companyId: company.id, eventId, sourceLocationId, destinationLocationId, createdByUserId: admin.id, type, status: StockMovementStatus.POSTED, notes, chargeable: !!billing, chargeAmount: billing?.chargeAmount };
     // Seed history may already have been signed, reconciled or consumed.
     if (existing) return existing;
-    return prisma.stockMovement.create({ data: { ...data, items: { create: itemData } } });
+    const created = await prisma.stockMovement.create({ data: { ...data, items: { create: itemData } } });
+    if (billing) {
+      await prisma.cashMovement.upsert({
+        where: { stockMovementId: created.id },
+        update: {},
+        create: { companyId: company.id, eventId, locationId: destinationLocationId, cashSessionId: billing.cashSessionId, stockMovementId: created.id, createdByUserId: admin.id, type: CashMovementType.COLLECTION, amount: billing.chargeAmount, concept: 'Cobro demo de segunda entrega' },
+      });
+    }
+    return created;
   }
+
+  const centralCash = await prisma.cashSession.upsert({
+    where: { id: 'seed-cash-session-central' }, update: {},
+    create: { id: 'seed-cash-session-central', companyId: company.id, eventId: null, locationId: central.id, openedByUserId: admin.id, openingAmount: 1000, notes: 'Caja demo de nave central' },
+  });
+  await prisma.cashMovement.upsert({
+    where: { id: 'seed-cash-opening-central' }, update: {},
+    create: { id: 'seed-cash-opening-central', companyId: company.id, eventId: null, locationId: central.id, cashSessionId: centralCash.id, createdByUserId: admin.id, type: CashMovementType.INITIAL_CASH, amount: 1000, concept: 'Fondo inicial de nave central' },
+  });
+  const barCash = await prisma.cashSession.upsert({
+    where: { id: 'seed-cash-session-bar-north' }, update: {},
+    create: { id: 'seed-cash-session-bar-north', companyId: company.id, eventId: event.id, locationId: bar.id, openedByUserId: admin.id, openingAmount: 0, notes: 'Caja demo de Barra Norte 1' },
+  });
+  await prisma.cashMovement.upsert({
+    where: { id: 'seed-cash-opening-bar-north' }, update: {},
+    create: { id: 'seed-cash-opening-bar-north', companyId: company.id, eventId: event.id, locationId: bar.id, cashSessionId: barCash.id, createdByUserId: admin.id, type: CashMovementType.INITIAL_CASH, amount: 0, concept: 'Apertura de caja a cero antes del fondo' },
+  });
+  await prisma.cashTransfer.upsert({
+    where: { id: 'seed-cash-transfer-bar-north' }, update: {},
+    create: { id: 'seed-cash-transfer-bar-north', companyId: company.id, eventId: event.id, originSessionId: centralCash.id, destinationSessionId: barCash.id, createdByUserId: admin.id, amount: 100, concept: 'Fondo demo para Barra Norte 1', movements: { create: [
+      { companyId: company.id, eventId: null, locationId: central.id, cashSessionId: centralCash.id, createdByUserId: admin.id, type: CashMovementType.CASH_OUT, amount: 100, concept: 'Fondo enviado a Barra Norte 1' },
+      { companyId: company.id, eventId: event.id, locationId: bar.id, cashSessionId: barCash.id, createdByUserId: admin.id, type: CashMovementType.CASH_IN, amount: 100, concept: 'Fondo recibido desde nave central' },
+    ] } },
+  });
 
   await movement('Seed: recepción de fábrica en nave central', null, central.id, StockMovementType.INITIAL_LOAD, [[cup33.id, 10000, StockCondition.CLEAN], [cup50.id, 3000, StockCondition.CLEAN]], null);
   const warehouseDelivery = await movement('Seed: nave central a almacén del evento', central.id, eventWarehouse.id, StockMovementType.DELIVERY, [[cup33.id, 5000, StockCondition.CLEAN], [cup50.id, 1000, StockCondition.CLEAN]], event.id);
   await movement('Seed: almacén a Caseta Norte', eventWarehouse.id, booth.id, StockMovementType.DELIVERY, [[cup33.id, 3000, StockCondition.CLEAN], [cup50.id, 500, StockCondition.CLEAN]], event.id);
-  await movement('Seed: suministro a Barra Norte 1', booth.id, bar.id, StockMovementType.DELIVERY, [[cup33.id, 1000, StockCondition.CLEAN]], event.id);
+  await movement('Seed: suministro inicial gratuito a Barra Norte 1', booth.id, bar.id, StockMovementType.DELIVERY, [[cup33.id, 1000, StockCondition.CLEAN]], event.id);
+  await movement('Seed: segunda entrega con cargo a Barra Norte 1', booth.id, bar.id, StockMovementType.DELIVERY, [[cup33.id, 200, StockCondition.CLEAN]], event.id, { chargeAmount: 200, cashSessionId: barCash.id });
   const barReturn = await movement('Seed: recogida de Barra Norte 1', bar.id, booth.id, StockMovementType.RETURN, [[cup33.id, 600, StockCondition.DIRTY], [cup33.id, 100, StockCondition.CLEAN], [cup50.id, 25, StockCondition.DAMAGED]], event.id);
   await movement('Seed: envío de sucios a zona de lavado', booth.id, cleaning.id, StockMovementType.CLEANING_SEND, [[cup33.id, 600, StockCondition.DIRTY]], event.id);
   await movement('Seed: retorno de vasos limpios desde lavado', cleaning.id, central.id, StockMovementType.CLEANING_RETURN, [[cup33.id, 600, StockCondition.CLEAN]], event.id);
@@ -193,20 +226,9 @@ async function main() {
     update: {}, create: { companyId: company.id, eventId: event.id, documentType: 'DELIVERY_NOTE', nextValue: 3 },
   });
 
-  const cashLocation = locations.get('boothNorth')!;
-  const cashSession = await prisma.cashSession.upsert({
-    where: { id: 'seed-cash-session-booth-north' },
-    update: {},
-    create: { id: 'seed-cash-session-booth-north', companyId: company.id, eventId: event.id, locationId: cashLocation.id, openedByUserId: admin.id, openingAmount: 100, notes: 'Caja demo de Caseta Norte' },
-  });
-  await prisma.cashMovement.upsert({
-    where: { id: 'seed-cash-opening-booth-north' },
-    update: {},
-    create: { id: 'seed-cash-opening-booth-north', companyId: company.id, eventId: event.id, locationId: cashLocation.id, cashSessionId: cashSession.id, createdByUserId: admin.id, type: CashMovementType.INITIAL_CASH, amount: 100, concept: 'Fondo inicial de caja' },
-  });
-
   console.log(`Seed completado: ${company.name} · ${event.name}`);
   console.log(`Usuarios demo: admin@ecocups.demo, responsable@ecocups.demo, trabajador@ecocups.demo, cliente@ecocups.demo · contraseña: ${password}`);
+  console.log('Escenario: nave con 1.000 €, fondo de barra de 100 €, segunda entrega cobrada de 200 € y recogida externa sin bloqueo de stock.');
 }
 
 main().catch((error) => { console.error(error); process.exitCode = 1; }).finally(() => prisma.$disconnect());
