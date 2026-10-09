@@ -9,6 +9,7 @@ import {
   DeliveryNote,
   EventModel,
   Location,
+  IncidentItem,
   StockMovement,
   StockMovementType,
   StockResponse,
@@ -65,6 +66,11 @@ export class EventsService {
     return this.http.get<
       Array<{ id: string; name: string; email: string; active: boolean; globalRole: string }>
     >(`${this.url}/events/${eventId}/user-candidates`);
+  }
+  eventMembers(eventId: string) {
+    return this.http.get<Array<{ userId: string; role: string; user: { id: string; name: string } }>>(
+      `${this.url}/events/${eventId}/users`,
+    );
   }
   locationAssignments(eventId: string, locationId: string) {
     return this.http.get<
@@ -154,6 +160,21 @@ export class EventsService {
     data: { to: string[]; subject?: string; message?: string },
   ) {
     return this.http.post(`${this.url}/events/${eventId}/delivery-notes/${id}/email`, data);
+  }
+  incidents(eventId: string) {
+    return this.http.get<IncidentItem[]>(`${this.url}/events/${eventId}/incidents`);
+  }
+  createIncident(eventId: string, data: unknown) {
+    return this.http.post<IncidentItem>(`${this.url}/events/${eventId}/incidents`, data);
+  }
+  updateIncident(eventId: string, incidentId: string, data: unknown) {
+    return this.http.patch<IncidentItem>(`${this.url}/events/${eventId}/incidents/${incidentId}`, data);
+  }
+  commentIncident(eventId: string, incidentId: string, message: string) {
+    return this.http.post(`${this.url}/events/${eventId}/incidents/${incidentId}/comments`, { message });
+  }
+  incidentAssignees(eventId: string) {
+    return this.http.get<Array<{ id: string; name: string }>>(`${this.url}/events/${eventId}/incidents/assignees`);
   }
   centralWarehouse() {
     return this.http.get<CentralWarehouseOverview>(`${this.url}/warehouse/overview`);

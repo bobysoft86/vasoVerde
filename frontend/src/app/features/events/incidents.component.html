@@ -1,0 +1,83 @@
+<section class="intro">
+  <div>
+    <p class="eyebrow">COORDINACIÓN DEL EVENTO</p>
+    <h1>Avisos e incidencias</h1>
+    <p class="subtitle">Comunica algo que requiere atención y sigue su resolución.</p>
+  </div>
+  <button mat-flat-button color="primary" (click)="showForm.set(!showForm())"><mat-icon>add</mat-icon>Nuevo aviso</button>
+</section>
+
+<div class="notice success" *ngIf="success()"><mat-icon>check_circle</mat-icon>{{ success() }}</div>
+<div class="notice error" *ngIf="error()"><mat-icon>error_outline</mat-icon>{{ error() }}</div>
+
+<mat-card class="create-card" *ngIf="showForm()">
+  <div class="form-heading"><div><h2>Crear aviso</h2><p>El equipo responsable podrá verlo y actualizar su estado.</p></div><button mat-icon-button aria-label="Cerrar formulario" (click)="showForm.set(false)"><mat-icon>close</mat-icon></button></div>
+  <form (ngSubmit)="submit()">
+    <div class="form-grid">
+      <label>Tipo de comunicación
+        <select [ngModel]="draft().kind" (ngModelChange)="setDraft('kind', $event)" name="kind">
+          <option value="INCIDENT">Incidencia · requiere resolución</option><option value="NOTICE">Aviso · información para responsables</option>
+        </select>
+      </label>
+      <label>Categoría
+        <select [ngModel]="draft().type" (ngModelChange)="setDraft('type', $event)" name="type">
+          <option value="OPERATIONAL">Operativa</option><option value="STOCK">Stock</option><option value="CASH">Caja</option><option value="SAFETY">Seguridad</option><option value="OTHER">Otra</option>
+        </select>
+      </label>
+      <label>Prioridad
+        <select [ngModel]="draft().priority" (ngModelChange)="setDraft('priority', $event)" name="priority">
+          <option value="NORMAL">Normal</option><option value="HIGH">Alta</option><option value="URGENT">Urgente</option>
+        </select>
+      </label>
+      <label>Ubicación <span class="optional">Opcional</span>
+        <select [ngModel]="draft().locationId" (ngModelChange)="setDraft('locationId', $event)" name="locationId">
+          <option value="">Evento completo</option><option *ngFor="let location of locations()" [value]="location.id">{{ location.name }}</option>
+        </select>
+      </label>
+      <label class="wide">Título
+        <input [ngModel]="draft().title" (ngModelChange)="setDraft('title', $event)" name="title" required minlength="3" maxlength="140" placeholder="Resume el aviso en una frase" />
+      </label>
+      <label class="wide">Descripción <span class="optional">Opcional</span>
+        <textarea [ngModel]="draft().description" (ngModelChange)="setDraft('description', $event)" name="description" rows="3" maxlength="5000" placeholder="Añade detalles que ayuden a resolverlo"></textarea>
+      </label>
+    </div>
+    <div class="form-actions"><button mat-button type="button" (click)="showForm.set(false)">Cancelar</button><button mat-flat-button color="primary" type="submit" [disabled]="saving() || draft().title.trim().length < 3"><mat-icon>send</mat-icon>{{ saving() ? 'Enviando…' : 'Enviar al responsable' }}</button></div>
+  </form>
+</mat-card>
+
+<div class="toolbar-row">
+  <div class="filters"><button [class.active]="kindFilter() === 'ALL'" (click)="kindFilter.set('ALL')">Todos <span>{{ items().length }}</span></button><button [class.active]="kindFilter() === 'INCIDENT'" (click)="kindFilter.set('INCIDENT')">Incidencias</button><button [class.active]="kindFilter() === 'NOTICE'" (click)="kindFilter.set('NOTICE')">Avisos</button></div>
+  <span class="manager-hint" *ngIf="isManager()"><mat-icon>admin_panel_settings</mat-icon>Vista de responsable</span>
+</div>
+
+<div class="loading" *ngIf="loading()"><mat-icon>hourglass_top</mat-icon>Cargando avisos…</div>
+<div class="empty" *ngIf="!loading() && !visibleItems().length"><mat-icon>task_alt</mat-icon><h3>No hay elementos en esta vista</h3><p>Cuando alguien envíe un aviso, aparecerá aquí.</p></div>
+
+<section class="incident-list" *ngIf="!loading()">
+  <mat-card class="incident-card" *ngFor="let item of visibleItems()">
+    <header class="incident-head">
+      <div class="badges"><span class="kind" [class.notice-kind]="item.kind === 'NOTICE'">{{ item.kind === 'NOTICE' ? 'Aviso' : 'Incidencia' }}</span><span [class]="'priority ' + item.priority.toLowerCase()">{{ priorityLabel(item.priority) }}</span><span [class]="'status ' + item.status.toLowerCase()">{{ statusLabel(item.status) }}</span></div>
+      <time>{{ item.createdAt | date:'dd/MM/yyyy · HH:mm' }}</time>
+    </header>
+    <div class="incident-main">
+      <div class="item-title"><h2>{{ item.title }}</h2><span>{{ typeLabel(item.type) }}<ng-container *ngIf="item.location"> · {{ item.location.name }}</ng-container></span></div>
+      <p class="description" *ngIf="item.description">{{ item.description }}</p>
+      <div class="meta">Enviado por <b>{{ item.createdBy.name }}</b><span *ngIf="item.assignedTo">· Responsable: <b>{{ item.assignedTo.name }}</b></span></div>
+    </div>
+
+    <div class="manager-controls" *ngIf="isManager()">
+      <label>Estado<select [ngModel]="item.status" (ngModelChange)="update(item, { status: $event })" [name]="'status-' + item.id"><option value="OPEN">Abierta</option><option value="IN_PROGRESS">En curso</option><option value="RESOLVED">Resuelta</option><option value="CANCELLED">Cancelada</option></select></label>
+      <label>Prioridad<select [ngModel]="item.priority" (ngModelChange)="update(item, { priority: $event })" [name]="'priority-' + item.id"><option value="NORMAL">Normal</option><option value="HIGH">Alta</option><option value="URGENT">Urgente</option></select></label>
+      <label>Responsable<select [ngModel]="item.assignedTo?.id || ''" (ngModelChange)="update(item, { assignedToUserId: $event })" [name]="'assignee-' + item.id"><option value="">Sin asignar</option><option *ngFor="let person of assignees()" [value]="person.id">{{ person.name }}</option></select></label>
+    </div>
+
+    <div class="timeline" *ngIf="item.comments.length">
+      <h3>Seguimiento <span>{{ item.comments.length }}</span></h3>
+      <div class="comment" *ngFor="let comment of item.comments"><span class="timeline-dot"></span><div><p>{{ comment.message }}</p><small>{{ comment.user.name }} · {{ comment.createdAt | date:'dd/MM/yyyy HH:mm' }}</small></div></div>
+    </div>
+    <form class="comment-form" (ngSubmit)="addComment(item)" *ngIf="item.status !== 'CANCELLED'">
+      <input [ngModel]="comments()[item.id] || ''" (ngModelChange)="setComment(item.id, $event)" [name]="'comment-' + item.id" placeholder="Añadir una actualización al seguimiento…" maxlength="2000" />
+      <button mat-button type="submit" [disabled]="!comments()[item.id]?.trim()"><mat-icon>send</mat-icon>Comentar</button>
+    </form>
+  </mat-card>
+</section>

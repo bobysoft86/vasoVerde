@@ -13,6 +13,7 @@ import { StockModule } from './stock/stock.module';
 import { DeliveryNotesModule } from './delivery-notes/delivery-notes.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { CashModule } from './cash/cash.module';
+import { IncidentsModule } from './incidents/incidents.module';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { IdempotencyInterceptor } from './common/idempotency.interceptor';
 
@@ -36,6 +37,7 @@ import { IdempotencyInterceptor } from './common/idempotency.interceptor';
     DeliveryNotesModule,
     DashboardModule,
     CashModule,
+    IncidentsModule,
   ],
 })
 export class AppModule {}

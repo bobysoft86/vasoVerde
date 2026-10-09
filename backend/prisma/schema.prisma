@@ -147,6 +147,17 @@ enum IncidentType {
   OTHER
 }
 
+enum IncidentKind {
+  INCIDENT
+  NOTICE
+}
+
+enum IncidentPriority {
+  NORMAL
+  HIGH
+  URGENT
+}
+
 enum IncidentStatus {
   OPEN
   IN_PROGRESS
@@ -202,6 +213,8 @@ model User {
   settledCashSessions   CashSession[]            @relation("CashSessionSettledBy")
   locationClosures      LocationClosure[]
   createdIncidents      Incident[]               @relation("IncidentCreatedBy")
+  assignedIncidents     Incident[]               @relation("IncidentAssignedTo")
+  incidentComments     IncidentComment[]
   auditLogs             AuditLog[]
   refreshTokens         RefreshToken[]
   deliveryNoteEmails    DeliveryNoteEmail[]
@@ -668,7 +681,10 @@ model Incident {
   eventId         String?
   locationId      String?
   createdByUserId String
+  assignedToUserId String?
+  kind            IncidentKind   @default(INCIDENT)
   type            IncidentType
+  priority        IncidentPriority @default(NORMAL)
   title           String
   description     String?        @db.Text
   status          IncidentStatus @default(OPEN)
@@ -678,9 +694,23 @@ model Incident {
   event           Event?         @relation(fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   location        Location?      @relation(fields: [locationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   createdBy       User           @relation("IncidentCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  assignedTo      User?          @relation("IncidentAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  comments        IncidentComment[]
 
   @@index([companyId, eventId, status])
   @@index([locationId, createdAt])
+}
+
+model IncidentComment {
+  id        String   @id @default(cuid())
+  incidentId String
+  userId    String
+  message   String   @db.Text
+  createdAt DateTime @default(now())
+  incident  Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([incidentId, createdAt])
 }
 
 model AuditLog {

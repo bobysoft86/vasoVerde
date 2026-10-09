@@ -1,59 +1,102 @@
 <section class="page-heading">
   <div>
-    <p class="eyebrow">RESUMEN OPERATIVO</p>
-    <h1>Buenos días, equipo</h1>
-    <p class="subtitle">Indicadores globales de Vaso Verde.</p>
+    <p class="eyebrow">VASO VERDE · GESTIÓN</p>
+    <h1>Panel de control</h1>
+    <p class="subtitle">Resumen de actividad, recursos y caja de la empresa.</p>
   </div>
-  <span class="date">{{ today }}</span>
+  <span class="date"><mat-icon>calendar_today</mat-icon>{{ today }}</span>
 </section>
-<section class="metrics" *ngIf="data() as item">
-  <mat-card
-    ><span>Eventos activos</span><strong>{{ item.events.active }}</strong
-    ><small>{{ item.events.planned }} planificados</small></mat-card
-  ><mat-card
-    ><span>Vasos en circulación</span><strong>{{ item.stock.inCirculation | number }}</strong
-    ><small>{{ item.stock.clean | number }} limpios</small></mat-card
-  ><mat-card
-    ><span>Albaranes pendientes</span><strong>{{ item.deliveryNotes.pendingSignature }}</strong
-    ><small>Requieren firma</small></mat-card
-  ><mat-card
-    ><span>Incidencias abiertas</span><strong>{{ item.incidents.open }}</strong
-    ><small>Operativas</small></mat-card
-  >
-</section>
-<section class="status-grid">
-  <mat-card class="status-card"
-    ><div class="status-icon api"><mat-icon>hub</mat-icon></div>
-    <div>
-      <span>API</span><strong>{{ apiStatus() }}</strong>
-    </div>
-    <i [class.online]="apiStatus() === 'Connected'"></i></mat-card
-  ><mat-card class="status-card"
-    ><div class="status-icon db"><mat-icon>storage</mat-icon></div>
-    <div>
-      <span>Base de datos</span><strong>{{ databaseStatus() }}</strong>
-    </div>
-    <i [class.online]="databaseStatus() === 'Connected'"></i
-  ></mat-card>
-</section>
-<section class="quick" *ngIf="data() as item">
-  <mat-card
-    ><h3>Stock global</h3>
-    <div class="stock-row">
-      <span>Limpios</span><b>{{ item.stock.clean | number }}</b>
-    </div>
-    <div class="stock-row">
-      <span>Sucios</span><b>{{ item.stock.dirty | number }}</b>
-    </div>
-    <div class="stock-row">
-      <span>Dañados</span><b>{{ item.stock.damaged | number }}</b>
-    </div>
-    <a routerLink="/events">Ver eventos</a></mat-card
-  ><mat-card
-    ><h3>Alertas</h3>
-    <p *ngFor="let alert of item.alerts" class="alert">
-      <mat-icon>info</mat-icon>{{ alert.message }}
-    </p>
-    <p *ngIf="!item.alerts.length" class="empty">No hay alertas activas.</p></mat-card
-  >
-</section>
+
+<div class="load-error" *ngIf="loadError()">
+  <mat-icon>cloud_off</mat-icon>
+  <span>No se pudo cargar el resumen. Comprueba la conexión e inténtalo de nuevo.</span>
+</div>
+
+<ng-container *ngIf="data() as item">
+  <section class="metrics" aria-label="Indicadores principales">
+    <mat-card class="metric-card accent-green">
+      <div class="metric-top"><span>Eventos en marcha</span><mat-icon>event</mat-icon></div>
+      <strong>{{ item.events.active }}</strong>
+      <small>{{ item.events.planned }} planificados · {{ item.events.finished }} finalizados</small>
+    </mat-card>
+    <mat-card class="metric-card accent-blue">
+      <div class="metric-top"><span>Vasos en circulación</span><mat-icon>local_drink</mat-icon></div>
+      <strong>{{ item.stock.inCirculation | number }}</strong>
+      <small>de {{ stockTotal() | number }} vasos en stock</small>
+    </mat-card>
+    <mat-card class="metric-card accent-amber">
+      <div class="metric-top"><span>Pendientes de firma</span><mat-icon>draw</mat-icon></div>
+      <strong>{{ item.deliveryNotes.pendingSignature }}</strong>
+      <small>Albaranes por completar</small>
+    </mat-card>
+    <mat-card class="metric-card accent-red">
+      <div class="metric-top"><span>Incidencias abiertas</span><mat-icon>report_problem</mat-icon></div>
+      <strong>{{ item.incidents.open }}</strong>
+      <small>Requieren seguimiento</small>
+    </mat-card>
+  </section>
+
+  <section class="report-grid">
+    <mat-card class="report-card">
+      <div class="card-heading">
+        <div><p class="eyebrow">INVENTARIO</p><h2>Estado del stock</h2></div>
+        <a routerLink="/warehouse">Abrir almacén <mat-icon>arrow_forward</mat-icon></a>
+      </div>
+      <div class="stock-total"><strong>{{ stockTotal() | number }}</strong><span>vasos contabilizados</span></div>
+      <div class="bar-list">
+        <div class="bar-item" *ngFor="let row of stockBars()">
+          <div class="bar-label"><span><i [class]="'dot ' + row.color"></i>{{ row.label }}</span><b>{{ row.value | number }} <small>{{ row.percent | number:'1.0-0' }}%</small></b></div>
+          <div class="track"><span [class]="'fill ' + row.color" [style.width.%]="row.percent"></span></div>
+        </div>
+      </div>
+      <div class="stock-callout"><mat-icon>swap_horiz</mat-icon><span><b>{{ item.stock.inCirculation | number }}</b> vasos están en puestos y barras.</span></div>
+    </mat-card>
+
+    <mat-card class="report-card">
+      <div class="card-heading">
+        <div><p class="eyebrow">CONTROL FINANCIERO</p><h2>Resumen de caja</h2></div>
+        <mat-icon class="heading-icon">account_balance_wallet</mat-icon>
+      </div>
+      <div class="cash-balance"><span>Saldo neto registrado</span><strong>{{ item.cash.balance | currency:'EUR':'symbol':'1.2-2':'es-ES' }}</strong></div>
+      <div class="bar-list cash-bars">
+        <div class="bar-item" *ngFor="let row of cashBars()">
+          <div class="bar-label"><span><i [class]="'dot ' + row.color"></i>{{ row.label }}</span><b>{{ row.value | currency:'EUR':'symbol':'1.0-0':'es-ES' }}</b></div>
+          <div class="track"><span [class]="'fill ' + row.color" [style.width.%]="row.percent"></span></div>
+        </div>
+      </div>
+      <div class="cash-details">
+        <div><span>Retiradas</span><b>{{ item.cash.withdrawals | currency:'EUR':'symbol':'1.2-2':'es-ES' }}</b></div>
+        <div><span>Diferencias de cierre</span><b [class.negative]="item.cash.differences < 0">{{ item.cash.differences | currency:'EUR':'symbol':'1.2-2':'es-ES' }}</b></div>
+      </div>
+      <div class="session-summary"><mat-icon>point_of_sale</mat-icon><span><b>{{ item.cash.sessions.open }}</b> cajas abiertas</span><span class="separator">·</span><span>{{ item.cash.sessions.closed }} cerradas</span></div>
+    </mat-card>
+  </section>
+
+  <section class="bottom-grid">
+    <mat-card class="task-card">
+      <div class="card-heading"><div><p class="eyebrow">SIGUIENTE PASO</p><h2>Requiere atención</h2></div><span class="count-badge">{{ item.deliveryNotes.pendingSignature + item.incidents.open }}</span></div>
+      <a class="task-row" routerLink="/events" *ngIf="item.deliveryNotes.pendingSignature">
+        <span class="task-icon amber"><mat-icon>draw</mat-icon></span><span class="task-copy"><b>{{ item.deliveryNotes.pendingSignature }} albaranes pendientes</b><small>Revisa las entregas y completa las firmas.</small></span><mat-icon class="task-arrow">arrow_forward</mat-icon>
+      </a>
+      <a class="task-row" routerLink="/events" *ngIf="item.incidents.open">
+        <span class="task-icon red"><mat-icon>report_problem</mat-icon></span><span class="task-copy"><b>{{ item.incidents.open }} incidencias abiertas</b><small>Consulta el estado de las incidencias activas.</small></span><mat-icon class="task-arrow">arrow_forward</mat-icon>
+      </a>
+      <div class="all-clear" *ngIf="!item.deliveryNotes.pendingSignature && !item.incidents.open"><mat-icon>task_alt</mat-icon><span>Todo al día. No hay tareas pendientes.</span></div>
+    </mat-card>
+
+    <mat-card class="task-card">
+      <div class="card-heading"><div><p class="eyebrow">ACCESOS RÁPIDOS</p><h2>Gestión diaria</h2></div></div>
+      <div class="shortcuts">
+        <a routerLink="/events"><mat-icon>event</mat-icon><span><b>Eventos</b><small>Planificar y consultar</small></span><mat-icon class="task-arrow">arrow_forward</mat-icon></a>
+        <a routerLink="/warehouse"><mat-icon>warehouse</mat-icon><span><b>Nave central</b><small>Revisar inventario</small></span><mat-icon class="task-arrow">arrow_forward</mat-icon></a>
+        <a routerLink="/admin/users"><mat-icon>group</mat-icon><span><b>Equipo</b><small>Gestionar usuarios</small></span><mat-icon class="task-arrow">arrow_forward</mat-icon></a>
+      </div>
+    </mat-card>
+  </section>
+
+  <footer class="system-status">
+    <span class="system-title">Estado del sistema</span>
+    <span><i [class.online]="apiStatus() === 'Conectada'"></i> API {{ apiStatus() }}</span>
+    <span><i [class.online]="databaseStatus() === 'Conectada'"></i> Base de datos {{ databaseStatus() }}</span>
+  </footer>
+</ng-container>

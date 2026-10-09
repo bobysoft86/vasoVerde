@@ -135,6 +135,11 @@ export const routes: Routes = [
               import('./features/events/reports.component').then((m) => m.ReportsComponent),
           },
           {
+            path: 'incidents',
+            loadComponent: () =>
+              import('./features/events/incidents.component').then((m) => m.IncidentsComponent),
+          },
+          {
             path: 'cash',
             loadComponent: () =>
               import('./features/events/cash.component').then((m) => m.CashComponent),

@@ -60,6 +60,7 @@ export class WarehouseComponent {
   private readonly cash = inject(CashService);
   private readonly destroyRef = inject(DestroyRef);
   readonly data = signal<CentralWarehouseOverview | null>(null);
+  readonly activeSection = signal<'overview' | 'receipt' | 'movement' | 'cash'>('overview');
   readonly cups = signal<CupType[]>([]);
   readonly error = signal('');
   readonly saving = signal(false);
@@ -329,6 +330,27 @@ export class WarehouseComponent {
 
   get central() {
     return this.data()?.locations.find((area) => area.type === 'CENTRAL_WAREHOUSE');
+  }
+  stockTotal(condition?: StockCondition) {
+    return (this.data()?.locations || [])
+      .flatMap((location) => location.items)
+      .filter((item) => !condition || item.condition === condition)
+      .reduce((total, item) => total + Math.max(0, item.quantity), 0);
+  }
+  conditionTotal(items: StockItem[], condition: StockCondition) {
+    return items
+      .filter((item) => item.condition === condition)
+      .reduce((total, item) => total + Math.max(0, item.quantity), 0);
+  }
+  locationCupTypes(items: StockItem[]) {
+    return new Set(items.map((item) => item.cupTypeId)).size;
+  }
+  movementLabel(type: string) {
+    return ({
+      INITIAL_LOAD: 'Recepción de fábrica', DELIVERY: 'Entrega a evento', RETURN: 'Devolución',
+      CLEANING_SEND: 'Envío a lavado', CLEANING_RETURN: 'Retorno de lavado', LOSS: 'Pérdida',
+      BREAKAGE: 'Rotura', TRANSFER: 'Traslado', ADJUSTMENT: 'Ajuste',
+    } as Record<string, string>)[type] ?? type;
   }
   get washing() {
     return this.data()?.locations.find((area) => area.type === 'CLEANING_AREA');

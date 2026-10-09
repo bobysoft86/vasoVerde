@@ -59,6 +59,27 @@ export interface Location {
   type: string;
   active: boolean;
 }
+export interface IncidentComment {
+  id: string;
+  message: string;
+  createdAt: string;
+  user: { id: string; name: string };
+}
+export interface IncidentItem {
+  id: string;
+  kind: 'INCIDENT' | 'NOTICE';
+  type: string;
+  priority: 'NORMAL' | 'HIGH' | 'URGENT';
+  title: string;
+  description?: string | null;
+  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CANCELLED';
+  createdAt: string;
+  updatedAt: string;
+  createdBy: { id: string; name: string };
+  assignedTo?: { id: string; name: string } | null;
+  location?: { id: string; name: string; type: string } | null;
+  comments: IncidentComment[];
+}
 export interface CentralWarehouseOverview {
   locations: Array<{ id: string; name: string; type: string; items: StockItem[] }>;
   movements: Array<{

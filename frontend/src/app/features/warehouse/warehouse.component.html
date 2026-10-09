@@ -1,15 +1,72 @@
 <main class="warehouse">
   <header class="page-head">
     <div>
-      <a class="back" routerLink="/dashboard">← Dashboard</a>
-      <p class="eyebrow">LOGÍSTICA GLOBAL</p>
+      <a class="back" routerLink="/dashboard"><mat-icon>arrow_back</mat-icon> Panel de control</a>
+      <p class="eyebrow">LOGÍSTICA · VASO VERDE</p>
       <h1>Nave central</h1>
-      <p>Stock global, vasos pendientes de lavar y movimientos de entrada y salida.</p>
+      <p>Inventario, preparación de eventos y caja central.</p>
     </div>
-    <mat-icon class="hero-icon">warehouse</mat-icon>
+    <button mat-stroked-button type="button" (click)="load()" [disabled]="loading()"><mat-icon>refresh</mat-icon>Actualizar</button>
   </header>
 
-  <mat-card class="receipt">
+  <nav class="warehouse-nav" aria-label="Secciones de la nave central">
+    <button [class.active]="activeSection() === 'overview'" (click)="activeSection.set('overview')"><mat-icon>dashboard</mat-icon>Resumen</button>
+    <button [class.active]="activeSection() === 'movement'" (click)="activeSection.set('movement')"><mat-icon>swap_horiz</mat-icon>Movimientos</button>
+    <button [class.active]="activeSection() === 'receipt'" (click)="activeSection.set('receipt')"><mat-icon>inventory_2</mat-icon>Recepcionar stock</button>
+    <button [class.active]="activeSection() === 'cash'" (click)="activeSection.set('cash')"><mat-icon>payments</mat-icon>Caja central</button>
+  </nav>
+
+  <div class="error-banner" *ngIf="error()"><mat-icon>error_outline</mat-icon>{{ error() }}</div>
+  <div class="offline-banner" *ngIf="offline()"><mat-icon>wifi_off</mat-icon>Sin conexión. Puedes consultar los datos cargados, pero no registrar operaciones.</div>
+
+  <ng-container *ngIf="activeSection() === 'overview'">
+    <section class="stock-overview" *ngIf="data() as overview">
+      <div class="stock-hero">
+        <div><span>STOCK EN LA NAVE</span><strong>{{ stockTotal() | number }}</strong><small>unidades registradas</small></div>
+        <mat-icon>warehouse</mat-icon>
+      </div>
+      <div class="stock-stat clean-stat"><span>Limpios</span><strong>{{ stockTotal('CLEAN') | number }}</strong><mat-icon>check_circle</mat-icon></div>
+      <div class="stock-stat dirty-stat"><span>Sucios</span><strong>{{ stockTotal('DIRTY') | number }}</strong><mat-icon>local_laundry_service</mat-icon></div>
+      <div class="stock-stat damaged-stat"><span>Dañados</span><strong>{{ stockTotal('DAMAGED') | number }}</strong><mat-icon>warning</mat-icon></div>
+    </section>
+    <section class="overview-grid" *ngIf="data() as overview">
+      <mat-card class="overview-card location-overview">
+        <div class="section-heading"><div><p class="eyebrow">INVENTARIO</p><h2>Stock por ubicación</h2></div><span>{{ overview.locations.length }} zonas</span></div>
+        <div class="location-row" *ngFor="let area of overview.locations">
+          <span class="location-icon"><mat-icon>{{ area.type === 'CLEANING_AREA' ? 'local_laundry_service' : 'warehouse' }}</mat-icon></span>
+          <div class="location-info"><strong>{{ area.name }}</strong><small>{{ labels[area.type] || area.type }}</small></div>
+          <strong class="location-total">{{ locationCupTypes(area.items) }} tipos</strong>
+          <div class="condition-chips">
+            <span class="clean-chip">{{ conditionTotal(area.items, 'CLEAN') | number }} limpios</span>
+            <span class="dirty-chip">{{ conditionTotal(area.items, 'DIRTY') | number }} sucios</span>
+            <span class="damaged-chip">{{ conditionTotal(area.items, 'DAMAGED') | number }} dañados</span>
+          </div>
+          <span class="location-empty" *ngIf="!area.items.length">Sin stock</span>
+        </div>
+        <p class="empty" *ngIf="!overview.locations.length">No hay ubicaciones configuradas.</p>
+      </mat-card>
+      <mat-card class="overview-card recent-overview">
+        <div class="section-heading"><div><p class="eyebrow">ACTIVIDAD</p><h2>Últimos movimientos</h2></div><button mat-button (click)="activeSection.set('movement')">Ver todo <mat-icon>arrow_forward</mat-icon></button></div>
+        <div class="recent-row" *ngFor="let movement of overview.movements | slice:0:5">
+          <span class="movement-icon"><mat-icon>sync_alt</mat-icon></span>
+          <div><strong>{{ movementLabel(movement.type) }}</strong><small>{{ movement.createdAt | date:'dd/MM · HH:mm' }} · {{ movement.createdBy.name }}</small></div>
+          <span class="movement-route">{{ movement.sourceLocation?.name || 'Entrada' }} → {{ movement.destinationLocation?.name || 'Salida' }}</span>
+        </div>
+        <p class="empty" *ngIf="!overview.movements.length">Todavía no hay movimientos.</p>
+      </mat-card>
+    </section>
+    <section class="quick-actions">
+      <button class="action-card" (click)="activeSection.set('receipt')"><span class="action-icon green"><mat-icon>add_box</mat-icon></span><span><strong>Recepcionar vasos</strong><small>Registrar una entrada de fábrica</small></span><mat-icon class="action-arrow">arrow_forward</mat-icon></button>
+      <button class="action-card" (click)="activeSection.set('movement')"><span class="action-icon blue"><mat-icon>local_shipping</mat-icon></span><span><strong>Mover stock</strong><small>Preparar, devolver o enviar a lavado</small></span><mat-icon class="action-arrow">arrow_forward</mat-icon></button>
+      <button class="action-card" (click)="activeSection.set('cash')"><span class="action-icon amber"><mat-icon>payments</mat-icon></span><span><strong>Gestionar caja</strong><small>Fondos y liquidaciones de eventos</small></span><mat-icon class="action-arrow">arrow_forward</mat-icon></button>
+    </section>
+    <mat-card class="circuit">
+      <mat-icon>sync_alt</mat-icon>
+      <div><h2>Circuito de limpieza</h2><p>Recoger sucios <b>→</b> enviar a lavado <b>→</b> devolver limpios <b>→</b> preparar el siguiente evento.</p></div>
+    </mat-card>
+  </ng-container>
+
+  <mat-card class="receipt" *ngIf="activeSection() === 'receipt'">
     <div class="card-title">
       <div>
         <p class="eyebrow">ENTRADA DE FÁBRICA</p>
@@ -64,7 +121,7 @@
     </div>
   </mat-card>
 
-  <mat-card class="cash-card">
+  <mat-card class="cash-card" *ngIf="activeSection() === 'cash'">
     <div class="card-title">
       <div>
         <p class="eyebrow">CAJA MATRIZ</p>
@@ -215,7 +272,7 @@
     <p class="error" *ngIf="cashError()">{{ cashError() }}</p>
   </mat-card>
 
-  <mat-card class="movement-form">
+  <mat-card class="movement-form" *ngIf="activeSection() === 'movement'">
     <div class="card-title">
       <div>
         <p class="eyebrow">OPERATIVA DE STOCK</p>
@@ -292,41 +349,11 @@
     <p class="error" *ngIf="error()">{{ error() }}</p>
   </mat-card>
 
-  <div class="areas" *ngIf="data() as overview">
-    <mat-card class="area" *ngFor="let area of overview.locations">
-      <div class="area-head">
-        <div>
-          <span>{{ labels[area.type] || area.type }}</span>
-          <h2>{{ area.name }}</h2>
-        </div>
-        <mat-icon>{{
-          area.type === 'CLEANING_AREA' ? 'local_laundry_service' : 'warehouse'
-        }}</mat-icon>
-      </div>
-      <div class="stock-row" *ngFor="let item of area.items">
-        <span>{{ item.cupTypeName }} · {{ item.condition }}</span
-        ><strong>{{ item.quantity }}</strong>
-      </div>
-      <p class="empty" *ngIf="!area.items.length">Sin stock registrado.</p>
-    </mat-card>
-  </div>
-
-  <mat-card class="circuit">
-    <mat-icon>sync_alt</mat-icon>
-    <div>
-      <h2>Circuito de limpieza</h2>
-      <p>
-        Recoger sucios → enviar a la zona de lavado → devolver limpios a la nave central → preparar
-        el siguiente evento.
-      </p>
-    </div>
-  </mat-card>
-
-  <mat-card class="movements" *ngIf="data() as overview">
-    <h2>Últimos movimientos de la nave</h2>
+  <mat-card class="movements" *ngIf="activeSection() === 'movement' && data() as overview">
+    <h2>Historial de movimientos</h2>
     <div class="movement" *ngFor="let movement of overview.movements">
       <div>
-        <strong>{{ movement.type }}</strong>
+        <strong>{{ movementLabel(movement.type) }}</strong>
         <small
           >{{ movement.createdAt | date: 'dd/MM/yyyy HH:mm' }} ·
           {{ movement.createdBy.name }}</small
@@ -340,5 +367,4 @@
     </div>
     <p class="empty" *ngIf="!overview.movements.length">Todavía no hay movimientos.</p>
   </mat-card>
-  <p class="error" *ngIf="error()">{{ error() }}</p>
 </main>
