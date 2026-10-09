@@ -485,6 +485,14 @@ export class WarehouseComponent {
       )
       .reduce((sum, item) => sum + Math.max(0, item.quantity), 0);
   }
+  stockLabel(cupTypeId: string) {
+    const quantities = (['CLEAN', 'DIRTY', 'DAMAGED'] as StockCondition[]).map((condition) =>
+      this.sourceItems
+        .filter((item) => item.cupTypeId === cupTypeId && item.condition === condition)
+        .reduce((sum, item) => sum + Math.max(0, item.quantity), 0),
+    );
+    return `L ${quantities[0]} · S ${quantities[1]} · D ${quantities[2]}`;
+  }
   requested(line: MovementLine) {
     return this.lines
       .filter(

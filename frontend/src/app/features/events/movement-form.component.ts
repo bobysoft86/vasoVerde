@@ -8,7 +8,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import { CupType, Location, StockMovementType } from '../../core/models/event.model';
+import { CupType, Location, StockItem, StockMovementType } from '../../core/models/event.model';
 import { EventsService } from '../../core/services/events.service';
 import { CashService } from '../../core/services/cash.service';
 import { CashSession } from '../../core/models/cash.model';
@@ -41,6 +41,7 @@ export class MovementFormComponent {
   readonly saving = signal(false);
   readonly error = signal('');
   readonly cashSessions = signal<CashSession[]>([]);
+  readonly sourceStock = signal<StockItem[]>([]);
   readonly types: StockMovementType[] = [
     'TRANSFER',
     'DELIVERY',
@@ -80,6 +81,7 @@ export class MovementFormComponent {
     this.api.locations(this.eventId).subscribe((value) => this.locations.set(value));
     this.api.cupTypes().subscribe((value) => this.cups.set(value));
     this.cash.sessions(this.eventId).subscribe((value) => this.cashSessions.set(value.filter((session) => session.status === 'OPEN')));
+    this.form.controls.sourceLocationId.valueChanges.subscribe(() => this.loadSourceStock());
     this.form.controls.type.valueChanges.subscribe(() => {
       const type = this.form.controls.type.value;
       this.form.controls.sourceLocationId.setValue('');
@@ -91,7 +93,27 @@ export class MovementFormComponent {
         this.form.controls.chargeAmount.setValue(0);
         this.form.controls.cashSessionId.setValue('');
       }
+      this.loadSourceStock();
     });
+  }
+  loadSourceStock() {
+    const locationId = this.form.controls.sourceLocationId.value;
+    if (!locationId) {
+      this.sourceStock.set([]);
+      return;
+    }
+    this.api.locationStock(this.eventId, locationId).subscribe({
+      next: (result) => this.sourceStock.set(result.items),
+      error: () => this.sourceStock.set([]),
+    });
+  }
+  stockLabel(cupTypeId: string) {
+    const values = (['CLEAN', 'DIRTY', 'DAMAGED'] as const).map((condition) =>
+      this.sourceStock()
+        .filter((item) => item.cupTypeId === cupTypeId && item.condition === condition)
+        .reduce((sum, item) => sum + Math.max(0, item.quantity), 0),
+    );
+    return `L ${values[0]} · S ${values[1]} · D ${values[2]}`;
   }
   item() {
     return this.fb.nonNullable.group({
