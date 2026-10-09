@@ -76,6 +76,21 @@ h1 {
   justify-content: flex-end;
   margin-top: 10px;
 }
+.cash-transfer {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #e2ece5;
+}
+.cash-transfer h3 {
+  margin: 0 12px 0 0;
+}
+.cash-transfer .eyebrow {
+  margin: 0 0 4px;
+}
 .success {
   color: #277351;
 }
@@ -222,6 +237,10 @@ h1 {
   .cash-actions mat-form-field,
   .cash-close mat-form-field,
   .cash-open mat-form-field {
+    width: 100%;
+  }
+  .cash-transfer mat-form-field,
+  .cash-transfer button {
     width: 100%;
   }
 }

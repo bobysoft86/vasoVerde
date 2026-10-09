@@ -77,6 +77,7 @@ export class WarehouseComponent {
   readonly cashError = signal('');
   readonly cashSuccess = signal('');
   readonly cashSaving = signal(false);
+  readonly transferSessions = signal<CashSession[]>([]);
   private eventRequest = 0;
   private stockRequest = 0;
   operation: Operation = 'INITIAL_LOAD';
@@ -88,6 +89,10 @@ export class WarehouseComponent {
   cashAmount = 0;
   cashConcept = '';
   cashClosing = 0;
+  transferEventId = '';
+  transferDestinationId = '';
+  transferAmount = 0;
+  transferConcept = '';
   cashMovementType: CashMovementType = 'CASH_IN';
   lines: MovementLine[] = [{ cupTypeId: '', quantity: 1, condition: 'CLEAN' }];
   readonly operations: { value: Operation; label: string }[] = [
@@ -110,6 +115,7 @@ export class WarehouseComponent {
 
   constructor() {
     this.load();
+    this.loadEvents();
   }
 
   @HostListener('window:offline') onOffline() {
@@ -210,6 +216,54 @@ export class WarehouseComponent {
         this.cashError.set(this.message(err, 'No se pudo cerrar la caja central.'));
       },
     });
+  }
+  loadTransferSessions() {
+    this.transferDestinationId = '';
+    this.transferSessions.set([]);
+    if (!this.transferEventId) return;
+    this.cash
+      .sessions(this.transferEventId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (sessions) =>
+          this.transferSessions.set(sessions.filter((session) => session.status === 'OPEN')),
+        error: (err) =>
+          this.cashError.set(this.message(err, 'No se pudieron cargar las cajas del evento.')),
+      });
+  }
+  transferFromCentral() {
+    const origin = this.centralCash();
+    if (
+      this.cashSaving() ||
+      !origin ||
+      !this.transferDestinationId ||
+      this.transferAmount <= 0 ||
+      !this.transferConcept.trim()
+    )
+      return;
+    this.cashSaving.set(true);
+    this.cashError.set('');
+    this.cash
+      .centralTransfer({
+        originSessionId: origin.id,
+        destinationSessionId: this.transferDestinationId,
+        amount: Number(this.transferAmount),
+        concept: this.transferConcept.trim(),
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.cashSaving.set(false);
+          this.transferAmount = 0;
+          this.transferConcept = '';
+          this.cashSuccess.set('Fondo transferido a la caja del evento.');
+          this.load();
+        },
+        error: (err) => {
+          this.cashSaving.set(false);
+          this.cashError.set(this.message(err, 'No se pudo transferir el fondo.'));
+        },
+      });
   }
 
   get central() {

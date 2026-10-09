@@ -121,6 +121,45 @@
           Cerrar caja central
         </button>
       </div>
+      <div class="cash-transfer">
+        <div>
+          <p class="eyebrow">ABASTECER CAJAS</p>
+          <h3>Enviar fondo a un evento</h3>
+        </div>
+        <mat-form-field appearance="outline">
+          <mat-label>Evento</mat-label>
+          <mat-select [(ngModel)]="transferEventId" (ngModelChange)="loadTransferSessions()">
+            <mat-option *ngFor="let event of events()" [value]="event.id">{{
+              event.name
+            }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Caja de destino</mat-label>
+          <mat-select [(ngModel)]="transferDestinationId">
+            <mat-option *ngFor="let destination of transferSessions()" [value]="destination.id">
+              {{ destination.location.name }} · {{ destination.expectedAmount | number: '1.2-2' }} €
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Importe</mat-label>
+          <input matInput type="number" min="0.01" step="0.01" [(ngModel)]="transferAmount" />
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="cash-concept">
+          <mat-label>Concepto</mat-label>
+          <input matInput [(ngModel)]="transferConcept" placeholder="Fondo de cambio" />
+        </mat-form-field>
+        <button
+          mat-flat-button
+          color="primary"
+          type="button"
+          (click)="transferFromCentral()"
+          [disabled]="cashSaving()"
+        >
+          Transferir fondo
+        </button>
+      </div>
     </ng-container>
     <ng-template #closedCentralCash>
       <div class="cash-open">
@@ -138,6 +177,7 @@
           Abrir caja central
         </button>
       </div>
+      <p class="empty">Abre la caja central para poder transferir fondos a los eventos.</p>
     </ng-template>
     <p class="success" *ngIf="cashSuccess()">{{ cashSuccess() }}</p>
     <p class="error" *ngIf="cashError()">{{ cashError() }}</p>
