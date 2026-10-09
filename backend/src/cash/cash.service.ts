@@ -41,29 +41,39 @@ export class CashService {
   private async operator(
     tx: Prisma.TransactionClient,
     user: AuthUser,
-    eventId: string,
+    eventId: string | null,
   ) {
     // All cash writers acquire locks in event -> location -> session order.
-    await tx.$queryRaw(
-      Prisma.sql`SELECT id FROM Event WHERE id = ${eventId} AND companyId = ${user.companyId} FOR UPDATE`,
-    );
-    const event = await tx.event.findFirst({
-      where: { id: eventId, companyId: user.companyId, deletedAt: null },
-    });
-    if (!event) throw new NotFoundException('Event not found');
-    if (
-      (
-        [
-          EventStatus.FINISHED,
-          EventStatus.ARCHIVED,
-          EventStatus.CANCELLED,
-        ] as EventStatus[]
-      ).includes(event.status)
-    )
-      throw new BadRequestException(
-        'This event no longer accepts cash operations',
+    if (eventId) {
+      await tx.$queryRaw(
+        Prisma.sql`SELECT id FROM Event WHERE id = ${eventId} AND companyId = ${user.companyId} FOR UPDATE`,
       );
+      const event = await tx.event.findFirst({
+        where: { id: eventId, companyId: user.companyId, deletedAt: null },
+      });
+      if (!event) throw new NotFoundException('Event not found');
+      if (
+        (
+          [
+            EventStatus.FINISHED,
+            EventStatus.ARCHIVED,
+            EventStatus.CANCELLED,
+          ] as EventStatus[]
+        ).includes(event.status)
+      )
+        throw new BadRequestException(
+          'This event no longer accepts cash operations',
+        );
+    } else if (!this.admin(user)) {
+      throw new ForbiddenException(
+        'Central cash requires administration permissions',
+      );
+    }
     if (this.admin(user)) return;
+    if (!eventId)
+      throw new ForbiddenException(
+        'Central cash requires administration permissions',
+      );
     const membership = await tx.eventUser.findUnique({
       where: { eventId_userId: { eventId, userId: user.sub } },
     });
@@ -73,7 +83,7 @@ export class CashService {
   private async location(
     tx: Prisma.TransactionClient,
     user: AuthUser,
-    eventId: string,
+    eventId: string | null,
     locationId: string,
   ) {
     const location = await tx.location.findFirst({
@@ -82,10 +92,14 @@ export class CashService {
         companyId: user.companyId,
         deletedAt: null,
         active: true,
-        OR: [
-          { eventId },
-          { eventId: null, type: LocationType.CENTRAL_WAREHOUSE },
-        ],
+        ...(eventId
+          ? {
+              OR: [
+                { eventId },
+                { eventId: null, type: LocationType.CENTRAL_WAREHOUSE },
+              ],
+            }
+          : { eventId: null, type: LocationType.CENTRAL_WAREHOUSE }),
       },
     });
     if (!location)
@@ -103,7 +117,7 @@ export class CashService {
       throw new BadRequestException(
         'Cash is only available for warehouse, booth and bar locations',
       );
-    if (!this.admin(user)) {
+    if (!this.admin(user) && eventId) {
       const assignment = await tx.locationUserAssignment.findFirst({
         where: {
           companyId: user.companyId,
@@ -130,7 +144,7 @@ export class CashService {
   private async sessions(
     tx: Prisma.TransactionClient,
     user: AuthUser,
-    eventId: string,
+    eventId: string | null,
     ids: string[],
   ) {
     const where = { id: { in: ids }, companyId: user.companyId, eventId };
@@ -158,12 +172,42 @@ export class CashService {
       await this.location(tx, user, eventId, session.locationId);
     return sessions;
   }
+  private async crossSessions(
+    tx: Prisma.TransactionClient,
+    user: AuthUser,
+    ids: string[],
+  ) {
+    const where = { id: { in: ids }, companyId: user.companyId };
+    const initial = await tx.cashSession.findMany({ where });
+    if (initial.length !== ids.length)
+      throw new NotFoundException('Cash session not found');
+    await this.lockLocations(
+      tx,
+      initial.map((session) => session.locationId),
+    );
+    for (const id of [...ids].sort())
+      await tx.$queryRaw(
+        Prisma.sql`SELECT id FROM CashSession WHERE id = ${id} FOR UPDATE`,
+      );
+    const sessions = await tx.cashSession.findMany({
+      where,
+      include: { movements: true, location: true },
+    });
+    if (sessions.some((session) => session.status !== CashSessionStatus.OPEN))
+      throw new BadRequestException('Cash boxes must exist and be open');
+    for (const session of sessions)
+      await this.location(tx, user, session.eventId, session.locationId);
+    return sessions;
+  }
   private async assertNotClosed(
     tx: Prisma.TransactionClient,
-    eventId: string,
+    eventId: string | null,
     locationId: string,
   ) {
-    if (await tx.locationClosure.findFirst({ where: { eventId, locationId } }))
+    if (
+      eventId &&
+      (await tx.locationClosure.findFirst({ where: { eventId, locationId } }))
+    )
       throw new BadRequestException('This location is already closed');
   }
   private assertFunds(
@@ -295,7 +339,7 @@ export class CashService {
     };
   }
 
-  async open(user: AuthUser, eventId: string, dto: OpenCashSessionDto) {
+  async open(user: AuthUser, eventId: string | null, dto: OpenCashSessionDto) {
     const session = await this.prisma.$transaction(
       async (tx) => {
         await this.operator(tx, user, eventId);
@@ -357,8 +401,12 @@ export class CashService {
     );
     return this.view(session);
   }
-  async list(user: AuthUser, eventId: string, status?: CashSessionStatus) {
-    await this.events.assertAccess(user, eventId);
+  async list(
+    user: AuthUser,
+    eventId: string | null,
+    status?: CashSessionStatus,
+  ) {
+    if (eventId) await this.events.assertAccess(user, eventId);
     const sessions = await this.prisma.cashSession.findMany({
       where: {
         companyId: user.companyId,
@@ -370,8 +418,8 @@ export class CashService {
     });
     return sessions.map((session) => this.view(session));
   }
-  async detail(user: AuthUser, eventId: string, id: string) {
-    await this.events.assertAccess(user, eventId);
+  async detail(user: AuthUser, eventId: string | null, id: string) {
+    if (eventId) await this.events.assertAccess(user, eventId);
     const session = await this.prisma.cashSession.findFirst({
       where: { id, companyId: user.companyId, eventId },
       include: this.include(),
@@ -379,7 +427,11 @@ export class CashService {
     if (!session) throw new NotFoundException('Cash session not found');
     return this.view(session);
   }
-  async transfer(user: AuthUser, eventId: string, dto: CreateCashTransferDto) {
+  async transfer(
+    user: AuthUser,
+    eventId: string | null,
+    dto: CreateCashTransferDto,
+  ) {
     if (dto.originSessionId === dto.destinationSessionId)
       throw new BadRequestException(
         'Origin and destination cash boxes must be different',
@@ -467,9 +519,106 @@ export class CashService {
       })),
     };
   }
+  async centralTransfer(user: AuthUser, dto: CreateCashTransferDto) {
+    if (dto.originSessionId === dto.destinationSessionId)
+      throw new BadRequestException(
+        'Origin and destination cash boxes must be different',
+      );
+    const transfer = await this.prisma.$transaction(
+      async (tx) => {
+        await this.operator(tx, user, null);
+        const sessions = await this.crossSessions(tx, user, [
+          dto.originSessionId,
+          dto.destinationSessionId,
+        ]);
+        const origin = sessions.find(
+          (session) => session.id === dto.originSessionId,
+        )!;
+        const destination = sessions.find(
+          (session) => session.id === dto.destinationSessionId,
+        )!;
+        if (!!origin.eventId === !!destination.eventId)
+          throw new BadRequestException(
+            'A central transfer must connect the nave and an event cash box',
+          );
+        await this.assertNotClosed(tx, origin.eventId, origin.locationId);
+        await this.assertNotClosed(
+          tx,
+          destination.eventId,
+          destination.locationId,
+        );
+        this.assertFunds(origin, dto.amount);
+        const transferEventId = origin.eventId ?? destination.eventId;
+        const created = await tx.cashTransfer.create({
+          data: {
+            companyId: user.companyId,
+            eventId: transferEventId,
+            originSessionId: origin.id,
+            destinationSessionId: destination.id,
+            createdByUserId: user.sub,
+            amount: dto.amount,
+            concept: dto.concept.trim(),
+            notes: dto.notes?.trim(),
+            movements: {
+              create: [
+                {
+                  companyId: user.companyId,
+                  eventId: origin.eventId,
+                  locationId: origin.locationId,
+                  cashSessionId: origin.id,
+                  createdByUserId: user.sub,
+                  type: CashMovementType.CASH_OUT,
+                  amount: dto.amount,
+                  concept: `Transferencia a ${destination.location.name}: ${dto.concept.trim()}`,
+                  notes: dto.notes?.trim(),
+                },
+                {
+                  companyId: user.companyId,
+                  eventId: destination.eventId,
+                  locationId: destination.locationId,
+                  cashSessionId: destination.id,
+                  createdByUserId: user.sub,
+                  type: CashMovementType.CASH_IN,
+                  amount: dto.amount,
+                  concept: `Transferencia desde ${origin.location.name}: ${dto.concept.trim()}`,
+                  notes: dto.notes?.trim(),
+                },
+              ],
+            },
+          },
+          include: { movements: true },
+        });
+        await tx.auditLog.create({
+          data: {
+            companyId: user.companyId,
+            eventId: transferEventId,
+            userId: user.sub,
+            action: 'CENTRAL_CASH_TRANSFER_CREATED',
+            entityType: 'CashTransfer',
+            entityId: created.id,
+            metadata: {
+              originSessionId: origin.id,
+              destinationSessionId: destination.id,
+              amount: dto.amount,
+            },
+          },
+        });
+        return created;
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
+    );
+    return {
+      ...transfer,
+      amount: Number(transfer.amount),
+      movements: transfer.movements.map((movement) => ({
+        ...movement,
+        amount: Number(movement.amount),
+      })),
+    };
+  }
   async addMovement(
     user: AuthUser,
-    eventId: string,
+    eventId: string | null,
     id: string,
     dto: CreateCashMovementDto,
   ) {
@@ -487,6 +636,13 @@ export class CashService {
     const isCupOperation =
       dto.type === CashMovementType.REFUND ||
       dto.type === CashMovementType.SALE;
+    if (isCupOperation && !eventId)
+      throw new BadRequestException(
+        'Cup sales and refunds belong to an event cash box',
+      );
+    const operationEventId = eventId;
+    if (isCupOperation && !operationEventId)
+      throw new BadRequestException('Cup operations require an event');
     if (isCupOperation && (!dto.cupTypeId || !dto.cupQuantity))
       throw new BadRequestException(
         'A vessel type and quantity are required for a vessel operation',
@@ -517,7 +673,7 @@ export class CashService {
           if (dto.type === CashMovementType.SALE) {
             const available = await this.availableClean(
               tx,
-              eventId,
+              operationEventId!,
               session.locationId,
               cup.id,
             );
@@ -533,7 +689,7 @@ export class CashService {
           const stockMovement = await tx.stockMovement.create({
             data: {
               companyId: user.companyId,
-              eventId,
+              eventId: operationEventId,
               ...(dto.type === CashMovementType.SALE
                 ? { sourceLocationId: session.locationId }
                 : { destinationLocationId: session.locationId }),
@@ -561,7 +717,7 @@ export class CashService {
         const movement = await tx.cashMovement.create({
           data: {
             companyId: user.companyId,
-            eventId,
+            eventId: operationEventId,
             locationId: session.locationId,
             cashSessionId: session.id,
             stockMovementId,
@@ -575,7 +731,7 @@ export class CashService {
         await tx.auditLog.create({
           data: {
             companyId: user.companyId,
-            eventId,
+            eventId: operationEventId,
             userId: user.sub,
             action: 'CASH_MOVEMENT_CREATED',
             entityType: 'CashSession',
@@ -598,7 +754,7 @@ export class CashService {
   }
   async close(
     user: AuthUser,
-    eventId: string,
+    eventId: string | null,
     id: string,
     dto: CloseCashSessionDto,
   ) {

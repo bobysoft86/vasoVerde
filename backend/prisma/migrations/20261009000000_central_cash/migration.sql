@@ -1,0 +1,2 @@
+ALTER TABLE `CashSession` MODIFY `eventId` VARCHAR(191) NULL;
+ALTER TABLE `CashTransfer` MODIFY `eventId` VARCHAR(191) NULL;

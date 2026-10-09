@@ -5,12 +5,12 @@ import { StockModule } from '../stock/stock.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { EventAccessGuard } from '../common/guards/event-access.guard';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { CashController } from './cash.controller';
+import { CashController, CentralCashController } from './cash.controller';
 import { CashService } from './cash.service';
 
 @Module({
   imports: [PrismaModule, AuthModule, EventsModule, StockModule],
-  controllers: [CashController],
+  controllers: [CashController, CentralCashController],
   providers: [CashService, EventAccessGuard, JwtAuthGuard],
 })
 export class CashModule {}

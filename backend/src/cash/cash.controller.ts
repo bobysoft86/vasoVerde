@@ -70,3 +70,55 @@ export class CashController {
     return this.cash.close(req.user, eventId, id, dto);
   }
 }
+
+@ApiTags('central-cash')
+@ApiBearerAuth()
+@Controller('warehouse/cash')
+@UseGuards(JwtAuthGuard)
+export class CentralCashController {
+  constructor(private readonly cash: CashService) {}
+
+  @Post('sessions') open(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: OpenCashSessionDto,
+  ) {
+    return this.cash.open(req.user, null, dto);
+  }
+
+  @Get('sessions') list(
+    @Req() req: AuthenticatedRequest,
+    @Query('status') status?: CashSessionStatus,
+  ) {
+    return this.cash.list(req.user, null, status);
+  }
+
+  @Get('sessions/:id') detail(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
+    return this.cash.detail(req.user, null, id);
+  }
+
+  @Post('sessions/:id/movements') addMovement(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: CreateCashMovementDto,
+  ) {
+    return this.cash.addMovement(req.user, null, id, dto);
+  }
+
+  @Post('sessions/:id/close') close(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: CloseCashSessionDto,
+  ) {
+    return this.cash.close(req.user, null, id, dto);
+  }
+
+  @Post('transfers') transfer(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: CreateCashTransferDto,
+  ) {
+    return this.cash.centralTransfer(req.user, dto);
+  }
+}

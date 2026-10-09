@@ -544,7 +544,7 @@ model CashMovement {
 model CashSession {
   id                String            @id @default(cuid())
   companyId         String
-  eventId           String
+  eventId           String?
   locationId        String
   openedByUserId    String
   status            CashSessionStatus @default(OPEN)
@@ -556,7 +556,7 @@ model CashSession {
   difference        Decimal?          @db.Decimal(12, 2)
   notes             String?           @db.Text
   company           Company           @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  event             Event             @relation(fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  event             Event?            @relation(fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   location          Location          @relation(fields: [locationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   openedBy          User              @relation("CashSessionOpenedBy", fields: [openedByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   closedBy          User?             @relation("CashSessionClosedBy", fields: [closedByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
@@ -572,7 +572,7 @@ model CashSession {
 model CashTransfer {
   id                   String         @id @default(cuid())
   companyId            String
-  eventId              String
+  eventId              String?
   originSessionId      String
   destinationSessionId String
   createdByUserId      String
@@ -581,7 +581,7 @@ model CashTransfer {
   notes                String?        @db.Text
   createdAt            DateTime       @default(now())
   company              Company        @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  event                Event          @relation(fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  event                Event?         @relation(fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   originSession        CashSession    @relation("CashTransferOrigin", fields: [originSessionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   destinationSession   CashSession    @relation("CashTransferDestination", fields: [destinationSessionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   createdBy            User           @relation(fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)

@@ -64,6 +64,85 @@
     </div>
   </mat-card>
 
+  <mat-card class="cash-card">
+    <div class="card-title">
+      <div>
+        <p class="eyebrow">CAJA MATRIZ</p>
+        <h2>Efectivo de la nave central</h2>
+        <p>Fondo de cambio y dinero disponible para abastecer las cajas de los eventos.</p>
+      </div>
+      <mat-icon>payments</mat-icon>
+    </div>
+
+    <ng-container *ngIf="centralCash() as cash; else closedCentralCash">
+      <div class="cash-summary">
+        <span>Saldo esperado</span>
+        <strong>{{ cash.expectedAmount | number: '1.2-2' }} €</strong>
+      </div>
+      <div class="cash-actions">
+        <mat-form-field appearance="outline">
+          <mat-label>Tipo de movimiento</mat-label>
+          <mat-select [(ngModel)]="cashMovementType">
+            <mat-option value="CASH_IN">Entrada de efectivo</mat-option>
+            <mat-option value="CASH_OUT">Salida de efectivo</mat-option>
+            <mat-option value="EXPENSE">Gasto</mat-option>
+            <mat-option value="ADJUSTMENT">Ajuste</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Importe</mat-label>
+          <input matInput type="number" min="0.01" step="0.01" [(ngModel)]="cashAmount" />
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="cash-concept">
+          <mat-label>Concepto</mat-label>
+          <input matInput [(ngModel)]="cashConcept" placeholder="Ej. Fondo para evento" />
+        </mat-form-field>
+        <button
+          mat-flat-button
+          color="primary"
+          type="button"
+          (click)="addCentralCashMovement()"
+          [disabled]="cashSaving()"
+        >
+          Registrar
+        </button>
+      </div>
+      <div class="cash-close">
+        <mat-form-field appearance="outline">
+          <mat-label>Arqueo de cierre</mat-label>
+          <input matInput type="number" min="0" step="0.01" [(ngModel)]="cashClosing" />
+        </mat-form-field>
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="closeCentralCash()"
+          [disabled]="cashSaving()"
+        >
+          Cerrar caja central
+        </button>
+      </div>
+    </ng-container>
+    <ng-template #closedCentralCash>
+      <div class="cash-open">
+        <mat-form-field appearance="outline">
+          <mat-label>Fondo inicial</mat-label>
+          <input matInput type="number" min="0" step="0.01" [(ngModel)]="cashOpening" />
+        </mat-form-field>
+        <button
+          mat-flat-button
+          color="primary"
+          type="button"
+          (click)="openCentralCash()"
+          [disabled]="cashSaving()"
+        >
+          Abrir caja central
+        </button>
+      </div>
+    </ng-template>
+    <p class="success" *ngIf="cashSuccess()">{{ cashSuccess() }}</p>
+    <p class="error" *ngIf="cashError()">{{ cashError() }}</p>
+  </mat-card>
+
   <div class="areas" *ngIf="data() as overview">
     <mat-card class="area" *ngFor="let area of overview.locations">
       <div class="area-head">

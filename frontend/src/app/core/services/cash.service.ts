@@ -48,4 +48,35 @@ export class CashService {
   ) {
     return this.http.post(`${this.url}/events/${eventId}/cash/transfers`, data);
   }
+
+  centralSessions() {
+    return this.http.get<CashSession[]>(`${this.url}/warehouse/cash/sessions`);
+  }
+  centralOpen(data: { locationId: string; openingAmount: number; notes?: string }) {
+    return this.http.post<CashSession>(`${this.url}/warehouse/cash/sessions`, data);
+  }
+  centralMovement(
+    sessionId: string,
+    data: { type: CashMovementType; amount: number; concept: string; notes?: string },
+  ) {
+    return this.http.post<CashSession>(
+      `${this.url}/warehouse/cash/sessions/${sessionId}/movements`,
+      data,
+    );
+  }
+  centralClose(sessionId: string, closingAmount: number, notes?: string) {
+    return this.http.post<CashSession>(`${this.url}/warehouse/cash/sessions/${sessionId}/close`, {
+      closingAmount,
+      notes,
+    });
+  }
+  centralTransfer(data: {
+    originSessionId: string;
+    destinationSessionId: string;
+    amount: number;
+    concept: string;
+    notes?: string;
+  }) {
+    return this.http.post(`${this.url}/warehouse/cash/transfers`, data);
+  }
 }

@@ -10,6 +10,7 @@ export type CashMovementType =
   | 'SALE';
 export interface CashSession {
   id: string;
+  eventId?: string | null;
   status: CashSessionStatus;
   openedAt: string;
   openingAmount: number;
