@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  CashMovementType,
   EventRole,
   GlobalRole,
   LocationType,
@@ -374,6 +375,12 @@ export class StockService {
       source?.id,
       destination?.id,
     );
+    if (dto.chargeable && (dto.type !== StockMovementType.DELIVERY || destination?.type !== LocationType.BAR))
+      throw new BadRequestException('Solo las entregas a barras pueden generar un cargo');
+    if (dto.chargeable && (!dto.chargeAmount || dto.chargeAmount <= 0 || !dto.cashSessionId))
+      throw new BadRequestException('Una entrega con cargo requiere importe y caja de la barra');
+    if (!dto.chargeable && (dto.chargeAmount || dto.cashSessionId))
+      throw new BadRequestException('El importe y la caja solo se usan en entregas con cargo');
     if (
       ['LOSS', 'BREAKAGE', 'ADJUSTMENT'].includes(dto.type) &&
       !dto.notes?.trim()
@@ -470,6 +477,8 @@ export class StockService {
             createdByUserId: user.sub,
             type: dto.type,
             status: StockMovementStatus.POSTED,
+            chargeable: !!dto.chargeable,
+            chargeAmount: dto.chargeable ? dto.chargeAmount : undefined,
             notes: dto.notes,
             items: {
               create: dto.items.map((item) => ({
@@ -486,6 +495,32 @@ export class StockService {
             items: { include: { cupType: true } },
           },
         });
+        if (dto.chargeable) {
+          const session = await tx.cashSession.findFirst({
+            where: {
+              id: dto.cashSessionId,
+              companyId: user.companyId,
+              eventId,
+              locationId: destination!.id,
+              status: 'OPEN',
+            },
+          });
+          if (!session) throw new BadRequestException('La caja seleccionada no está abierta en esta barra');
+          await tx.cashMovement.create({
+            data: {
+              companyId: user.companyId,
+              eventId,
+              locationId: destination!.id,
+              cashSessionId: session.id,
+              stockMovementId: created.id,
+              createdByUserId: user.sub,
+              type: CashMovementType.COLLECTION,
+              amount: dto.chargeAmount!,
+              concept: `Cargo por entrega a ${destination!.name}`,
+              notes: dto.notes,
+            },
+          });
+        }
         if (
           eventId &&
           dto.generateDeliveryNote &&

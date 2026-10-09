@@ -25,6 +25,7 @@ import { CreateCashMovementDto } from './dto/create-cash-movement.dto';
 import { CloseCashSessionDto } from './dto/close-cash-session.dto';
 import { OpenCashSessionDto } from './dto/open-cash-session.dto';
 import { CreateCashTransferDto } from './dto/create-cash-transfer.dto';
+import { ConfirmBarSettlementDto } from './dto/confirm-bar-settlement.dto';
 
 @Injectable()
 export class CashService {
@@ -698,6 +699,120 @@ export class CashService {
       amount: Number(transfer.amount),
       movements: transfer.movements.map((movement) => ({ ...movement, amount: Number(movement.amount) })),
     };
+  }
+  private async calculateBarSettlement(
+    tx: Prisma.TransactionClient,
+    companyId: string,
+    eventId: string,
+    locationId: string,
+  ) {
+    const movements = await tx.stockMovement.findMany({
+      where: {
+        companyId,
+        eventId,
+        status: StockMovementStatus.POSTED,
+        OR: [
+          { type: StockMovementType.DELIVERY, destinationLocationId: locationId },
+          { type: StockMovementType.RETURN, sourceLocationId: locationId },
+        ],
+      },
+      include: { items: { include: { cupType: { select: { id: true, name: true, cost: true } } } } },
+    });
+    const lines = new Map<string, { cupTypeId: string; cupTypeName: string; delivered: number; collected: number; unitPrice: number }>();
+    let prepaidAmount = 0;
+    for (const movement of movements) {
+      if (movement.type === StockMovementType.DELIVERY && movement.chargeable)
+        prepaidAmount += Number(movement.chargeAmount || 0);
+      for (const item of movement.items) {
+        const line = lines.get(item.cupTypeId) || {
+          cupTypeId: item.cupTypeId,
+          cupTypeName: item.cupType.name,
+          delivered: 0,
+          collected: 0,
+          unitPrice: Number(item.cupType.cost || 0),
+        };
+        if (movement.type === StockMovementType.DELIVERY) line.delivered += item.quantity;
+        if (movement.type === StockMovementType.RETURN) line.collected += item.quantity;
+        lines.set(item.cupTypeId, line);
+      }
+    }
+    const resultLines = [...lines.values()].map((line) => {
+      const difference = line.delivered - line.collected;
+      const missingAmount = Math.max(0, difference) * line.unitPrice;
+      return { ...line, difference, missingAmount };
+    });
+    const missingAmount = resultLines.reduce((sum, line) => sum + line.missingAmount, 0);
+    const balanceAmount = missingAmount - prepaidAmount;
+    return {
+      lines: resultLines,
+      totalDelivered: resultLines.reduce((sum, line) => sum + line.delivered, 0),
+      totalCollected: resultLines.reduce((sum, line) => sum + line.collected, 0),
+      prepaidAmount,
+      missingAmount,
+      balanceAmount,
+      direction: balanceAmount > 0 ? 'COLLECT' : balanceAmount < 0 ? 'REFUND' : 'BALANCED',
+    };
+  }
+  async barSettlementPreview(user: AuthUser, eventId: string, locationId: string) {
+    await this.events.assertAccess(user, eventId);
+    const location = await this.prisma.location.findFirst({
+      where: { id: locationId, companyId: user.companyId, eventId, type: LocationType.BAR, deletedAt: null, active: true },
+      select: { id: true, name: true },
+    });
+    if (!location) throw new NotFoundException('Bar not found');
+    const result = await this.calculateBarSettlement(this.prisma, user.companyId, eventId, locationId);
+    return { location, ...result, balanceAmount: Number(result.balanceAmount), prepaidAmount: Number(result.prepaidAmount), missingAmount: Number(result.missingAmount), lines: result.lines.map((line) => ({ ...line, unitPrice: Number(line.unitPrice), missingAmount: Number(line.missingAmount) })) };
+  }
+  async settleBar(user: AuthUser, eventId: string, dto: ConfirmBarSettlementDto) {
+    const result = await this.prisma.$transaction(async (tx) => {
+      await this.operator(tx, user, eventId);
+      const location = await this.location(tx, user, eventId, dto.locationId);
+      if (location.type !== LocationType.BAR) throw new BadRequestException('Solo se pueden liquidar barras');
+      const closure = await tx.locationClosure.findFirst({ where: { eventId, locationId: dto.locationId } });
+      if (!closure) throw new BadRequestException('Cierra la barra antes de liquidarla');
+      const [session] = await this.sessions(tx, user, eventId, [dto.cashSessionId]);
+      if (session.locationId !== dto.locationId) throw new BadRequestException('La caja no pertenece a esta barra');
+      const existing = await tx.barSettlement.findFirst({ where: { companyId: user.companyId, eventId, locationId: dto.locationId, status: 'CONFIRMED' } });
+      if (existing) throw new ConflictException('Esta barra ya tiene una liquidación confirmada');
+      const calculation = await this.calculateBarSettlement(tx, user.companyId, eventId, dto.locationId);
+      const settlement = await tx.barSettlement.create({
+        data: {
+          companyId: user.companyId,
+          eventId,
+          locationId: dto.locationId,
+          createdByUserId: user.sub,
+          totalDelivered: calculation.totalDelivered,
+          totalCollected: calculation.totalCollected,
+          prepaidAmount: calculation.prepaidAmount,
+          missingAmount: calculation.missingAmount,
+          balanceAmount: calculation.balanceAmount,
+          notes: dto.notes?.trim(),
+          lines: { create: calculation.lines.map((line) => ({ cupTypeId: line.cupTypeId, delivered: line.delivered, collected: line.collected, difference: line.difference, unitPrice: line.unitPrice, missingAmount: line.missingAmount })) },
+        },
+        include: { lines: true },
+      });
+      const amount = Math.abs(calculation.balanceAmount);
+      if (amount > 0) {
+        if (calculation.balanceAmount < 0) this.assertFunds(session, amount);
+        await tx.cashMovement.create({
+          data: {
+            companyId: user.companyId,
+            eventId,
+            locationId: dto.locationId,
+            cashSessionId: session.id,
+            barSettlementId: settlement.id,
+            createdByUserId: user.sub,
+            type: calculation.balanceAmount > 0 ? CashMovementType.COLLECTION : CashMovementType.REFUND,
+            amount,
+            concept: calculation.balanceAmount > 0 ? 'Cobro de liquidación de barra' : 'Devolución de liquidación de barra',
+            notes: dto.notes?.trim(),
+          },
+        });
+      }
+      await tx.auditLog.create({ data: { companyId: user.companyId, eventId, userId: user.sub, action: 'BAR_SETTLEMENT_CONFIRMED', entityType: 'BarSettlement', entityId: settlement.id, metadata: { locationId: dto.locationId, balanceAmount: calculation.balanceAmount } } });
+      return { settlement, calculation, location };
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
+    return { ...result.settlement, location: result.location, ...result.calculation, balanceAmount: Number(result.calculation.balanceAmount), prepaidAmount: Number(result.calculation.prepaidAmount), missingAmount: Number(result.calculation.missingAmount), lines: result.calculation.lines.map((line) => ({ ...line, unitPrice: Number(line.unitPrice), missingAmount: Number(line.missingAmount) })) };
   }
   async addMovement(
     user: AuthUser,

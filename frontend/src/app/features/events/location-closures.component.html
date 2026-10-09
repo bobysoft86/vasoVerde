@@ -11,6 +11,7 @@
     <mat-form-field appearance="outline"
       ><mat-label>Barra o caseta</mat-label
       ><mat-select [(ngModel)]="sourceId"
+        (ngModelChange)="loadSettlement()"
         ><mat-option *ngFor="let location of sources()" [value]="location.id">{{
           location.name
         }}</mat-option></mat-select
@@ -46,3 +47,27 @@
 >
 <p class="success" *ngIf="success()">Cierre registrado correctamente.</p>
 <p class="error" *ngIf="error()">{{ error() }}</p>
+<mat-card class="settlement-card" *ngIf="settlement() as preview">
+  <h3>Liquidación económica de {{ preview.location.name }}</h3>
+  <div class="settlement-lines">
+    <div *ngFor="let line of preview.lines">
+      <span>{{ line.cupTypeName }} · entregados {{ line.delivered }} · recogidos {{ line.collected }}</span>
+      <strong>{{ line.difference }} · {{ line.missingAmount | number: '1.2-2' }} €</strong>
+    </div>
+  </div>
+  <p>Anticipado en entregas: <strong>{{ preview.prepaidAmount | number: '1.2-2' }} €</strong></p>
+  <p *ngIf="preview.direction === 'COLLECT'">La barra debe abonar <strong>{{ preview.balanceAmount | number: '1.2-2' }} €</strong>.</p>
+  <p *ngIf="preview.direction === 'REFUND'">Debemos devolver <strong>{{ -preview.balanceAmount | number: '1.2-2' }} €</strong> a la barra.</p>
+  <p *ngIf="preview.direction === 'BALANCED'">Liquidación equilibrada: no hay importe pendiente.</p>
+  <mat-form-field appearance="outline">
+    <mat-label>Caja de la barra</mat-label>
+    <mat-select [(ngModel)]="settlementSessionId">
+      <mat-option *ngFor="let session of cashSessions()" [value]="session.id">{{ session.location.name }} · {{ session.expectedAmount | number: '1.2-2' }} €</mat-option>
+    </mat-select>
+  </mat-form-field>
+  <button mat-flat-button color="primary" (click)="settle()" [disabled]="settling || !settlementSessionId">
+    {{ settling ? 'Confirmando…' : 'Confirmar liquidación' }}
+  </button>
+</mat-card>
+<p class="success" *ngIf="settlementSuccess()">Liquidación confirmada y registrada en caja.</p>
+<p class="error" *ngIf="settlementError()">{{ settlementError() }}</p>

@@ -133,6 +133,11 @@ enum CashSessionStatus {
   CLOSED
 }
 
+enum BarSettlementStatus {
+  CONFIRMED
+  CANCELLED
+}
+
 enum IncidentType {
   STOCK
   OPERATIONAL
@@ -170,37 +175,39 @@ model Company {
   incidents           Incident[]
   auditLogs           AuditLog[]
   documentSequences   DocumentSequence[]
+  barSettlements      BarSettlement[]
 }
 
 model User {
-  id                   String                   @id @default(cuid())
-  companyId            String
-  name                 String
-  email                String
-  passwordHash         String
-  globalRole           GlobalRole               @default(USER)
-  phone                String?
-  active               Boolean                  @default(true)
-  createdAt            DateTime                 @default(now())
-  updatedAt            DateTime                 @updatedAt
-  deletedAt            DateTime?
-  company              Company                  @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  eventMemberships     EventUser[]
-  createdMovements     StockMovement[]          @relation("MovementCreatedBy")
-  createdDeliveryNotes DeliveryNote[]           @relation("DeliveryNoteCreatedBy")
-  signatures           Signature[]
-  createdCashMovements CashMovement[]           @relation("CashCreatedBy")
-  openedCashSessions   CashSession[]            @relation("CashSessionOpenedBy")
-  closedCashSessions   CashSession[]            @relation("CashSessionClosedBy")
-  settledCashSessions  CashSession[]            @relation("CashSessionSettledBy")
-  locationClosures     LocationClosure[]
-  createdIncidents     Incident[]               @relation("IncidentCreatedBy")
-  auditLogs            AuditLog[]
-  refreshTokens        RefreshToken[]
-  deliveryNoteEmails   DeliveryNoteEmail[]
-  cashTransfers        CashTransfer[]
-  clientBars           Bar[]                    @relation("BarClient")
-  locationAssignments  LocationUserAssignment[]
+  id                    String                   @id @default(cuid())
+  companyId             String
+  name                  String
+  email                 String
+  passwordHash          String
+  globalRole            GlobalRole               @default(USER)
+  phone                 String?
+  active                Boolean                  @default(true)
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+  deletedAt             DateTime?
+  company               Company                  @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  eventMemberships      EventUser[]
+  createdMovements      StockMovement[]          @relation("MovementCreatedBy")
+  createdDeliveryNotes  DeliveryNote[]           @relation("DeliveryNoteCreatedBy")
+  signatures            Signature[]
+  createdCashMovements  CashMovement[]           @relation("CashCreatedBy")
+  openedCashSessions    CashSession[]            @relation("CashSessionOpenedBy")
+  closedCashSessions    CashSession[]            @relation("CashSessionClosedBy")
+  settledCashSessions   CashSession[]            @relation("CashSessionSettledBy")
+  locationClosures      LocationClosure[]
+  createdIncidents      Incident[]               @relation("IncidentCreatedBy")
+  auditLogs             AuditLog[]
+  refreshTokens         RefreshToken[]
+  deliveryNoteEmails    DeliveryNoteEmail[]
+  cashTransfers         CashTransfer[]
+  clientBars            Bar[]                    @relation("BarClient")
+  locationAssignments   LocationUserAssignment[]
+  createdBarSettlements BarSettlement[]          @relation("BarSettlementCreatedBy")
 
   @@unique([companyId, email])
   @@index([companyId, active])
@@ -248,6 +255,7 @@ model Event {
   locationAssignments LocationUserAssignment[]
   incidents           Incident[]
   auditLogs           AuditLog[]
+  barSettlements      BarSettlement[]
 
   @@unique([companyId, code])
   @@index([companyId, status])
@@ -308,21 +316,22 @@ model Bar {
 }
 
 model CupType {
-  id            String              @id @default(cuid())
-  companyId     String
-  name          String
-  code          String
-  capacityMl    Int?
-  description   String?             @db.Text
-  active        Boolean             @default(true)
-  cost          Decimal?            @db.Decimal(10, 2)
-  deposit       Decimal?            @db.Decimal(10, 2)
-  externalCode  String?
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
-  deletedAt     DateTime?
-  company       Company             @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  movementItems StockMovementItem[]
+  id              String              @id @default(cuid())
+  companyId       String
+  name            String
+  code            String
+  capacityMl      Int?
+  description     String?             @db.Text
+  active          Boolean             @default(true)
+  cost            Decimal?            @db.Decimal(10, 2)
+  deposit         Decimal?            @db.Decimal(10, 2)
+  externalCode    String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  deletedAt       DateTime?
+  company         Company             @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  movementItems   StockMovementItem[]
+  settlementLines BarSettlementLine[]
 
   @@unique([companyId, code])
   @@index([companyId, active])
@@ -352,6 +361,7 @@ model Location {
   closures             LocationClosure[]        @relation("LocationClosures")
   closureDestinations  LocationClosure[]        @relation("LocationClosureDestinations")
   incidents            Incident[]
+  barSettlements       BarSettlement[]
   assignments          LocationUserAssignment[]
 
   @@unique([companyId, code])
@@ -387,6 +397,8 @@ model StockMovement {
   createdByUserId       String
   type                  StockMovementType
   status                StockMovementStatus @default(POSTED)
+  chargeable            Boolean             @default(false)
+  chargeAmount          Decimal?            @db.Decimal(12, 2)
   notes                 String?             @db.Text
   createdAt             DateTime            @default(now())
   updatedAt             DateTime            @updatedAt
@@ -520,6 +532,7 @@ model CashMovement {
   cashSessionId   String?
   cashTransferId  String?
   stockMovementId String?          @unique
+  barSettlementId String?          @unique
   createdByUserId String
   type            CashMovementType
   amount          Decimal          @db.Decimal(12, 2)
@@ -533,6 +546,7 @@ model CashMovement {
   cashSession     CashSession?     @relation(fields: [cashSessionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   cashTransfer    CashTransfer?    @relation(fields: [cashTransferId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   stockMovement   StockMovement?   @relation(fields: [stockMovementId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  barSettlement   BarSettlement?   @relation(fields: [barSettlementId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   createdBy       User             @relation("CashCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([companyId, eventId, createdAt])
@@ -540,6 +554,47 @@ model CashMovement {
   @@index([type, createdAt])
   @@index([cashSessionId, createdAt])
   @@index([cashTransferId])
+}
+
+model BarSettlement {
+  id              String              @id @default(cuid())
+  companyId       String
+  eventId         String
+  locationId      String
+  createdByUserId String
+  status          BarSettlementStatus @default(CONFIRMED)
+  totalDelivered  Int
+  totalCollected  Int
+  prepaidAmount   Decimal             @db.Decimal(12, 2)
+  missingAmount   Decimal             @db.Decimal(12, 2)
+  balanceAmount   Decimal             @db.Decimal(12, 2)
+  notes           String?             @db.Text
+  createdAt       DateTime            @default(now())
+  confirmedAt     DateTime            @default(now())
+  company         Company             @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  event           Event               @relation(fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  location        Location            @relation(fields: [locationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  createdBy       User                @relation("BarSettlementCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  lines           BarSettlementLine[]
+  cashMovement    CashMovement?
+
+  @@index([companyId, eventId, locationId, status])
+}
+
+model BarSettlementLine {
+  id            String        @id @default(cuid())
+  settlementId  String
+  cupTypeId     String
+  delivered     Int
+  collected     Int
+  difference    Int
+  unitPrice     Decimal       @db.Decimal(10, 2)
+  missingAmount Decimal       @db.Decimal(12, 2)
+  settlement    BarSettlement @relation(fields: [settlementId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  cupType       CupType       @relation(fields: [cupTypeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([settlementId, cupTypeId])
+  @@index([cupTypeId])
 }
 
 model CashSession {

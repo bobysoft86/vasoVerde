@@ -18,6 +18,7 @@ import { CloseCashSessionDto } from './dto/close-cash-session.dto';
 import { CreateCashMovementDto } from './dto/create-cash-movement.dto';
 import { OpenCashSessionDto } from './dto/open-cash-session.dto';
 import { CreateCashTransferDto } from './dto/create-cash-transfer.dto';
+import { ConfirmBarSettlementDto } from './dto/confirm-bar-settlement.dto';
 
 @ApiTags('cash')
 @ApiBearerAuth()
@@ -52,6 +53,20 @@ export class CashController {
     @Body() dto: CreateCashTransferDto,
   ) {
     return this.cash.transfer(req.user, eventId, dto);
+  }
+  @Get('bar-settlements/preview/:locationId') settlementPreview(
+    @Req() req: AuthenticatedRequest,
+    @Param('eventId') eventId: string,
+    @Param('locationId') locationId: string,
+  ) {
+    return this.cash.barSettlementPreview(req.user, eventId, locationId);
+  }
+  @Post('bar-settlements') settleBar(
+    @Req() req: AuthenticatedRequest,
+    @Param('eventId') eventId: string,
+    @Body() dto: ConfirmBarSettlementDto,
+  ) {
+    return this.cash.settleBar(req.user, eventId, dto);
   }
   @Post('sessions/:id/movements') addMovement(
     @Req() req: AuthenticatedRequest,

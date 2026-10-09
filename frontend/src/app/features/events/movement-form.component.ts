@@ -10,6 +10,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { CupType, Location, StockMovementType } from '../../core/models/event.model';
 import { EventsService } from '../../core/services/events.service';
+import { CashService } from '../../core/services/cash.service';
+import { CashSession } from '../../core/models/cash.model';
 
 @Component({
   selector: 'app-movement-form',
@@ -32,11 +34,13 @@ export class MovementFormComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
+  private readonly cash = inject(CashService);
   private readonly eventId = this.route.parent?.snapshot.paramMap.get('eventId') ?? '';
   readonly locations = signal<Location[]>([]);
   readonly cups = signal<CupType[]>([]);
   readonly saving = signal(false);
   readonly error = signal('');
+  readonly cashSessions = signal<CashSession[]>([]);
   readonly types: StockMovementType[] = [
     'TRANSFER',
     'DELIVERY',
@@ -64,6 +68,9 @@ export class MovementFormComponent {
     destinationLocationId: [''],
     notes: [''],
     generateDeliveryNote: [true],
+    chargeable: [false],
+    chargeAmount: [0],
+    cashSessionId: [''],
     items: this.fb.array([this.item()]),
   });
   get items() {
@@ -72,12 +79,18 @@ export class MovementFormComponent {
   constructor() {
     this.api.locations(this.eventId).subscribe((value) => this.locations.set(value));
     this.api.cupTypes().subscribe((value) => this.cups.set(value));
+    this.cash.sessions(this.eventId).subscribe((value) => this.cashSessions.set(value.filter((session) => session.status === 'OPEN')));
     this.form.controls.type.valueChanges.subscribe(() => {
       const type = this.form.controls.type.value;
       this.form.controls.sourceLocationId.setValue('');
       this.form.controls.destinationLocationId.setValue('');
       const condition = type === 'CLEANING_SEND' ? 'DIRTY' : 'CLEAN';
       for (const item of this.items.controls) item.get('condition')?.setValue(condition);
+      if (type !== 'DELIVERY') {
+        this.form.controls.chargeable.setValue(false);
+        this.form.controls.chargeAmount.setValue(0);
+        this.form.controls.cashSessionId.setValue('');
+      }
     });
   }
   item() {
@@ -102,6 +115,7 @@ export class MovementFormComponent {
       this.form.controls.type.value,
     );
   }
+  isDelivery() { return this.form.controls.type.value === 'DELIVERY'; }
   needsDestination() {
     const type = this.form.controls.type.value;
     return !['LOSS', 'BREAKAGE'].includes(type);

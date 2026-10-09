@@ -35,6 +35,7 @@ export interface CupType {
   capacityMl?: number;
   description?: string;
   active: boolean;
+  cost?: number | null;
 }
 export type StockCondition = 'CLEAN' | 'DIRTY' | 'DAMAGED';
 export type StockMovementType =
