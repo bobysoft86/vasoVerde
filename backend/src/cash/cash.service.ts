@@ -176,6 +176,7 @@ export class CashService {
     tx: Prisma.TransactionClient,
     user: AuthUser,
     ids: string[],
+    allowClosedIds: string[] = [],
   ) {
     const where = { id: { in: ids }, companyId: user.companyId };
     const initial = await tx.cashSession.findMany({ where });
@@ -193,7 +194,7 @@ export class CashService {
       where,
       include: { movements: true, location: true },
     });
-    if (sessions.some((session) => session.status !== CashSessionStatus.OPEN))
+    if (sessions.some((session) => session.status !== CashSessionStatus.OPEN && !allowClosedIds.includes(session.id)))
       throw new BadRequestException('Cash boxes must exist and be open');
     for (const session of sessions)
       await this.location(tx, user, session.eventId, session.locationId);
@@ -614,6 +615,88 @@ export class CashService {
         ...movement,
         amount: Number(movement.amount),
       })),
+    };
+  }
+  async settleToCentral(user: AuthUser, dto: CreateCashTransferDto) {
+    if (dto.originSessionId === dto.destinationSessionId)
+      throw new BadRequestException('Origin and destination cash boxes must be different');
+    const transfer = await this.prisma.$transaction(
+      async (tx) => {
+        await this.operator(tx, user, null);
+        const sessions = await this.crossSessions(tx, user, [
+          dto.originSessionId,
+          dto.destinationSessionId,
+        ], [dto.originSessionId]);
+        const origin = sessions.find((session) => session.id === dto.originSessionId)!;
+        const destination = sessions.find((session) => session.id === dto.destinationSessionId)!;
+        if (!origin.eventId || destination.eventId || origin.status !== CashSessionStatus.CLOSED || destination.status !== CashSessionStatus.OPEN)
+          throw new BadRequestException('La liquidación debe ir de una caja de evento cerrada a la caja central abierta');
+        if (origin.settledAt)
+          throw new ConflictException('Esta caja ya ha sido liquidada en la nave');
+        if (origin.closingAmount === null || Math.round(Number(origin.closingAmount) * 100) !== Math.round(dto.amount * 100))
+          throw new BadRequestException('El importe debe coincidir con el arqueo de cierre de la caja');
+        const created = await tx.cashTransfer.create({
+          data: {
+            companyId: user.companyId,
+            eventId: origin.eventId,
+            originSessionId: origin.id,
+            destinationSessionId: destination.id,
+            createdByUserId: user.sub,
+            amount: dto.amount,
+            concept: dto.concept.trim(),
+            notes: dto.notes?.trim(),
+            movements: {
+              create: [
+                {
+                  companyId: user.companyId,
+                  eventId: origin.eventId,
+                  locationId: origin.locationId,
+                  cashSessionId: origin.id,
+                  createdByUserId: user.sub,
+                  type: CashMovementType.CASH_OUT,
+                  amount: dto.amount,
+                  concept: `Liquidación hacia la nave: ${dto.concept.trim()}`,
+                  notes: dto.notes?.trim(),
+                },
+                {
+                  companyId: user.companyId,
+                  eventId: null,
+                  locationId: destination.locationId,
+                  cashSessionId: destination.id,
+                  createdByUserId: user.sub,
+                  type: CashMovementType.CASH_IN,
+                  amount: dto.amount,
+                  concept: `Liquidación desde ${origin.location.name}: ${dto.concept.trim()}`,
+                  notes: dto.notes?.trim(),
+                },
+              ],
+            },
+          },
+          include: { movements: true },
+        });
+        await tx.cashSession.update({
+          where: { id: origin.id },
+          data: { settledAt: new Date(), settledByUserId: user.sub, settlementAmount: dto.amount },
+        });
+        await tx.auditLog.create({
+          data: {
+            companyId: user.companyId,
+            eventId: origin.eventId,
+            userId: user.sub,
+            action: 'CASH_SESSION_SETTLED_TO_CENTRAL',
+            entityType: 'CashSession',
+            entityId: origin.id,
+            metadata: { centralSessionId: destination.id, amount: dto.amount, transferId: created.id },
+          },
+        });
+        return created;
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
+    );
+    return {
+      ...transfer,
+      amount: Number(transfer.amount),
+      movements: transfer.movements.map((movement) => ({ ...movement, amount: Number(movement.amount) })),
     };
   }
   async addMovement(

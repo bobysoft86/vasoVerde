@@ -94,7 +94,13 @@
     >
     <p class="difference" *ngIf="session.status === 'CLOSED'">
       Diferencia de cierre: {{ session.difference | number: '1.2-2' }} €
-    </p></mat-card
+    </p>
+    <p class="settlement-status" *ngIf="session.status === 'CLOSED' && !session.settledAt">
+      Pendiente de devolver a la nave central.
+    </p>
+    <p class="settlement-status settled" *ngIf="session.settledAt">
+      Liquidada en la nave el {{ session.settledAt | date: 'dd/MM/yyyy HH:mm' }}.
+    </p></mat-card>
   >
 </div>
 <p class="error" *ngIf="error()">{{ error() }}</p>

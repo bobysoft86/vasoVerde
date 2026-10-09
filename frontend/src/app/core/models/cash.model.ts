@@ -17,6 +17,8 @@ export interface CashSession {
   expectedAmount: number;
   closingAmount: number | null;
   difference: number | null;
+  settledAt?: string | null;
+  settlementAmount?: number | null;
   location: { id: string; name: string; type: string };
   movements: Array<{
     id: string;

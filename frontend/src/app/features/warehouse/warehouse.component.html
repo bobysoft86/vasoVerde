@@ -160,6 +160,38 @@
           Transferir fondo
         </button>
       </div>
+      <div class="cash-transfer cash-settlement">
+        <div>
+          <p class="eyebrow">LIQUIDAR EVENTOS</p>
+          <h3>Devolver efectivo a la nave</h3>
+          <small>Solo aparecen cajas cerradas cuyo arqueo todavía no ha vuelto a la caja central.</small>
+        </div>
+        <mat-form-field appearance="outline">
+          <mat-label>Evento</mat-label>
+          <mat-select [(ngModel)]="settlementEventId" (ngModelChange)="loadSettlementSessions()">
+            <mat-option *ngFor="let event of events()" [value]="event.id">{{ event.name }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Caja cerrada</mat-label>
+          <mat-select [(ngModel)]="settlementSessionId" (ngModelChange)="changeSettlementSession()">
+            <mat-option *ngFor="let session of settlementSessions()" [value]="session.id">
+              {{ session.location.name }} · arqueo {{ session.closingAmount | number: '1.2-2' }} €
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Importe liquidado</mat-label>
+          <input matInput type="number" min="0.01" step="0.01" [(ngModel)]="settlementAmount" />
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="cash-concept">
+          <mat-label>Concepto</mat-label>
+          <input matInput [(ngModel)]="settlementConcept" placeholder="Cierre y devolución de efectivo" />
+        </mat-form-field>
+        <button mat-flat-button color="primary" type="button" (click)="settleEventCash()" [disabled]="cashSaving()">
+          Liquidar en nave
+        </button>
+      </div>
     </ng-container>
     <ng-template #closedCentralCash>
       <div class="cash-open">

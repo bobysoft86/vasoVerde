@@ -146,7 +146,7 @@ export class EventsService {
   }
 
   private async closureChecklistFor(tx: Prisma.TransactionClient, companyId: string, eventId: string) {
-    const [pendingLocations, openCashSessions, unsignedNotes, movements] = await Promise.all([
+    const [pendingLocations, openCashSessions, unsettledCashSessions, unsignedNotes, movements] = await Promise.all([
       tx.location.findMany({
         where: { companyId, eventId, active: true, deletedAt: null,
           type: { in: ['BAR', 'BOOTH'] }, closures: { none: { companyId, eventId } } },
@@ -155,6 +155,10 @@ export class EventsService {
       tx.cashSession.findMany({
         where: { companyId, eventId, status: 'OPEN' },
         select: { id: true, locationId: true, location: { select: { name: true } } },
+      }),
+      tx.cashSession.findMany({
+        where: { companyId, eventId, status: 'CLOSED', settledAt: null },
+        select: { id: true, locationId: true, location: { select: { name: true } }, closingAmount: true },
       }),
       tx.deliveryNote.findMany({
         where: { companyId, eventId, status: { notIn: ['SIGNED', 'CANCELLED'] } },
@@ -175,11 +179,12 @@ export class EventsService {
     const blockers = {
       pendingLocations: pendingLocations.length,
       openCashSessions: openCashSessions.length,
+      unsettledCashSessions: unsettledCashSessions.length,
       unsignedNotes: unsignedNotes.length,
       dirtyStock: dirtyStock.reduce((sum, item) => sum + item.quantity, 0),
     };
     return { eventId, ready: Object.values(blockers).every((count) => count === 0),
-      blockers, pendingLocations, openCashSessions, unsignedNotes, dirtyStock };
+      blockers, pendingLocations, openCashSessions, unsettledCashSessions, unsignedNotes, dirtyStock };
   }
 
   async closureChecklist(user: AuthUser, eventId: string) {

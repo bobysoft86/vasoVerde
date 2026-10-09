@@ -9,6 +9,7 @@
     <ul class="checklist">
       <li><span>Barras y casetas sin cerrar: <strong>{{ data.blockers.pendingLocations }}</strong></span><a mat-button [routerLink]="['/events', eventId, 'closures']">Cerrar ubicaciones</a></li>
       <li><span>Cajas abiertas: <strong>{{ data.blockers.openCashSessions }}</strong></span><a mat-button [routerLink]="['/events', eventId, 'cash']">Liquidar cajas</a></li>
+      <li><span>Cajas pendientes de devolver a la nave: <strong>{{ data.blockers.unsettledCashSessions }}</strong></span><a mat-button routerLink="/warehouse">Liquidar en nave</a></li>
       <li><span>Albaranes sin firmar: <strong>{{ data.blockers.unsignedNotes }}</strong></span><a mat-button [routerLink]="['/events', eventId, 'delivery-notes']">Revisar albaranes</a></li>
       <li><span>Vasos sucios pendientes de lavado: <strong>{{ data.blockers.dirtyStock }}</strong></span><a mat-button routerLink="/warehouse">Gestionar lavado</a></li>
     </ul>

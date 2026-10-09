@@ -121,4 +121,11 @@ export class CentralCashController {
   ) {
     return this.cash.centralTransfer(req.user, dto);
   }
+
+  @Post('settlements') settle(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: CreateCashTransferDto,
+  ) {
+    return this.cash.settleToCentral(req.user, dto);
+  }
 }

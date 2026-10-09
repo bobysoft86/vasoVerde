@@ -79,4 +79,13 @@ export class CashService {
   }) {
     return this.http.post(`${this.url}/warehouse/cash/transfers`, data);
   }
+  centralSettlement(data: {
+    originSessionId: string;
+    destinationSessionId: string;
+    amount: number;
+    concept: string;
+    notes?: string;
+  }) {
+    return this.http.post(`${this.url}/warehouse/cash/settlements`, data);
+  }
 }

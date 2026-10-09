@@ -78,6 +78,7 @@ export class WarehouseComponent {
   readonly cashSuccess = signal('');
   readonly cashSaving = signal(false);
   readonly transferSessions = signal<CashSession[]>([]);
+  readonly settlementSessions = signal<CashSession[]>([]);
   private eventRequest = 0;
   private stockRequest = 0;
   operation: Operation = 'INITIAL_LOAD';
@@ -93,6 +94,10 @@ export class WarehouseComponent {
   transferDestinationId = '';
   transferAmount = 0;
   transferConcept = '';
+  settlementEventId = '';
+  settlementSessionId = '';
+  settlementAmount = 0;
+  settlementConcept = '';
   cashMovementType: CashMovementType = 'CASH_IN';
   lines: MovementLine[] = [{ cupTypeId: '', quantity: 1, condition: 'CLEAN' }];
   readonly operations: { value: Operation; label: string }[] = [
@@ -262,6 +267,62 @@ export class WarehouseComponent {
         error: (err) => {
           this.cashSaving.set(false);
           this.cashError.set(this.message(err, 'No se pudo transferir el fondo.'));
+        },
+      });
+  }
+  loadSettlementSessions() {
+    this.settlementSessionId = '';
+    this.settlementAmount = 0;
+    this.settlementSessions.set([]);
+    if (!this.settlementEventId) return;
+    this.cash
+      .sessions(this.settlementEventId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (sessions) =>
+          this.settlementSessions.set(
+            sessions.filter((session) => session.status === 'CLOSED' && !session.settledAt),
+          ),
+        error: (err) =>
+          this.cashError.set(this.message(err, 'No se pudieron cargar las cajas pendientes.')),
+      });
+  }
+  changeSettlementSession() {
+    const session = this.settlementSessions().find((item) => item.id === this.settlementSessionId);
+    this.settlementAmount = session?.closingAmount ?? 0;
+  }
+  settleEventCash() {
+    const destination = this.centralCash();
+    if (
+      this.cashSaving() ||
+      !destination ||
+      !this.settlementSessionId ||
+      this.settlementAmount <= 0 ||
+      !this.settlementConcept.trim()
+    )
+      return;
+    this.cashSaving.set(true);
+    this.cashError.set('');
+    this.cash
+      .centralSettlement({
+        originSessionId: this.settlementSessionId,
+        destinationSessionId: destination.id,
+        amount: Number(this.settlementAmount),
+        concept: this.settlementConcept.trim(),
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.cashSaving.set(false);
+          this.settlementAmount = 0;
+          this.settlementConcept = '';
+          this.cashSuccess.set('Caja del evento liquidada en la nave central.');
+          this.loadSettlementSessions();
+          this.load();
+        },
+        error: (err) => {
+          this.cashSaving.set(false);
+          this.cashError.set(this.message(err, 'No se pudo liquidar la caja del evento.'));
         },
       });
   }

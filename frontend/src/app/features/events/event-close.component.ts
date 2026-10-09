@@ -9,7 +9,7 @@ interface ClosureChecklist {
   status: string;
   canManage: boolean;
   ready: boolean;
-  blockers: { pendingLocations: number; openCashSessions: number; unsignedNotes: number; dirtyStock: number };
+  blockers: { pendingLocations: number; openCashSessions: number; unsettledCashSessions: number; unsignedNotes: number; dirtyStock: number };
   pendingLocations: { id: string; name: string; type: string }[];
   unsignedNotes: { id: string; number: string }[];
 }

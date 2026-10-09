@@ -192,6 +192,7 @@ model User {
   createdCashMovements CashMovement[]           @relation("CashCreatedBy")
   openedCashSessions   CashSession[]            @relation("CashSessionOpenedBy")
   closedCashSessions   CashSession[]            @relation("CashSessionClosedBy")
+  settledCashSessions  CashSession[]            @relation("CashSessionSettledBy")
   locationClosures     LocationClosure[]
   createdIncidents     Incident[]               @relation("IncidentCreatedBy")
   auditLogs            AuditLog[]
@@ -554,12 +555,16 @@ model CashSession {
   closedByUserId    String?
   closingAmount     Decimal?          @db.Decimal(12, 2)
   difference        Decimal?          @db.Decimal(12, 2)
+  settledAt         DateTime?
+  settledByUserId   String?
+  settlementAmount  Decimal?          @db.Decimal(12, 2)
   notes             String?           @db.Text
   company           Company           @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   event             Event?            @relation(fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   location          Location          @relation(fields: [locationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   openedBy          User              @relation("CashSessionOpenedBy", fields: [openedByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   closedBy          User?             @relation("CashSessionClosedBy", fields: [closedByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  settledBy         User?             @relation("CashSessionSettledBy", fields: [settledByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   movements         CashMovement[]
   outgoingTransfers CashTransfer[]    @relation("CashTransferOrigin")
   incomingTransfers CashTransfer[]    @relation("CashTransferDestination")
@@ -567,6 +572,7 @@ model CashSession {
   @@index([companyId, eventId, status])
   @@index([locationId, status])
   @@index([openedAt])
+  @@index([companyId, eventId, settledAt])
 }
 
 model CashTransfer {
