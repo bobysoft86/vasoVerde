@@ -69,6 +69,41 @@
   font-size: 32px;
   margin-top: 4px;
 }
+.bar-cash {
+  background: #e9f5ed;
+}
+.bar-cash-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.bar-cash-row span,
+.hint,
+.delivery-charge small {
+  color: #65766d;
+}
+.bar-cash-row span,
+.bar-cash-row strong {
+  display: block;
+}
+.bar-cash-row strong {
+  font-size: 24px;
+  margin-top: 4px;
+}
+.delivery-charge {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 14px 0;
+  padding: 12px;
+  border: 1px dashed #c9d8cd;
+  border-radius: 8px;
+}
+.delivery-charge mat-form-field {
+  flex: 1 1 180px;
+}
 .quick h2,
 .bar-area h2 {
   margin-top: 0;

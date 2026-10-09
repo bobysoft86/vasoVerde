@@ -9,6 +9,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatIconModule } from '@angular/material/icon';
 import { CashService } from '../../core/services/cash.service';
 import { EventsService } from '../../core/services/events.service';
@@ -27,6 +28,7 @@ import { OperationalState } from './operational-state';
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
+    MatCheckboxModule,
     MatIconModule,
   ],
   templateUrl: './location-pos.component.html',
@@ -55,6 +57,8 @@ export class LocationPosComponent {
   barType: 'DELIVERY' | 'RETURN' = 'RETURN';
   sourceId = '';
   destinationId = '';
+  deliveryChargeable = false;
+  deliveryChargeAmount = 0;
   otherType: CashMovementType = 'CASH_IN';
   otherAmount = 1;
   constructor() {
@@ -79,6 +83,10 @@ export class LocationPosComponent {
     const counterpart = this.barType === 'RETURN' ? this.destinationId : this.sourceId;
     this.barType = type;
     this.condition = type === 'DELIVERY' ? 'CLEAN' : 'DIRTY';
+    if (type === 'RETURN') {
+      this.deliveryChargeable = false;
+      this.deliveryChargeAmount = 0;
+    }
     this.sourceId = type === 'RETURN' ? this.locationId : counterpart;
     this.destinationId = type === 'DELIVERY' ? this.locationId : counterpart;
   }
@@ -221,16 +229,27 @@ export class LocationPosComponent {
       this.error.set('La entrega supera el stock limpio disponible en origen.');
       return;
     }
+    if (!returning && this.deliveryChargeable && (!this.session() || !this.validMoney(this.deliveryChargeAmount))) {
+      this.error.set('Abre la caja de la barra y registra un importe válido para cobrar la entrega.');
+      return;
+    }
     this.write(() => this.events.createMovement(this.eventId, {
         type: this.barType,
         sourceLocationId: this.sourceId,
         destinationLocationId: this.destinationId,
         generateDeliveryNote: true,
+        chargeable: !returning && this.deliveryChargeable,
+        ...(!returning && this.deliveryChargeable ? {
+          chargeAmount: Number(this.deliveryChargeAmount),
+          cashSessionId: this.session()!.id,
+        } : {}),
         items: [
           { cupTypeId: this.cupTypeId, condition: this.condition, quantity: Number(this.quantity) },
         ],
       }), (movement) => {
           this.quantity = 1;
+          this.deliveryChargeable = false;
+          this.deliveryChargeAmount = 0;
           if (movement.deliveryNote?.id) {
             void this.router.navigate(['/events', this.eventId, 'delivery-notes', movement.deliveryNote.id]);
           }

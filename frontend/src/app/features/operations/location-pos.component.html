@@ -72,12 +72,23 @@
       >
     </section>
     <section *ngIf="current.type === 'BAR'" class="bar-area">
+      <mat-card class="bar-cash">
+        <div *ngIf="!session()">
+          <h2>Caja de la barra</h2>
+          <p class="hint">Abre a 0 € y recibe el fondo mediante una transferencia desde la nave central.</p>
+          <button mat-stroked-button color="primary" (click)="openCash()">Abrir caja a 0 €</button>
+        </div>
+        <div *ngIf="session() as cash" class="bar-cash-row">
+          <div><span>Saldo esperado</span><strong>{{ cash.expectedAmount | number: '1.2-2' }} €</strong></div>
+          <button mat-stroked-button (click)="closeCash()">Cerrar caja</button>
+        </div>
+      </mat-card>
       <mat-card
         ><h2>Movimiento de vasos</h2>
         <div class="quick-grid">
-          <button mat-flat-button color="primary" (click)="barType = 'RETURN'">
+          <button mat-flat-button color="primary" (click)="setDirection('RETURN')">
             Recoger de la barra</button
-          ><button mat-stroked-button (click)="barType = 'DELIVERY'">Entregar a la barra</button>
+          ><button mat-stroked-button (click)="setDirection('DELIVERY')">Entregar a la barra</button>
         </div>
         <p class="selected">
           {{
@@ -120,10 +131,18 @@
             ><input matInput type="number" min="1" [(ngModel)]="quantity"
           /></mat-form-field>
         </div>
+        <div class="delivery-charge" *ngIf="barType === 'DELIVERY'">
+          <mat-checkbox [(ngModel)]="deliveryChargeable">Cobrar esta entrega a la barra</mat-checkbox>
+          <mat-form-field appearance="outline" *ngIf="deliveryChargeable">
+            <mat-label>Importe cobrado (€)</mat-label>
+            <input matInput type="number" min="0.01" step="0.01" [(ngModel)]="deliveryChargeAmount" />
+          </mat-form-field>
+          <small *ngIf="!session()">Necesitas abrir la caja de la barra para registrar el cobro.</small>
+        </div>
         <button
           mat-flat-button
           color="primary"
-          [disabled]="!cupTypeId || !sourceId || !destinationId"
+          [disabled]="!cupTypeId || !sourceId || !destinationId || (deliveryChargeable && (!session() || !validMoney(deliveryChargeAmount)))"
           (click)="saveStock()"
         >
           Guardar y generar albarán
