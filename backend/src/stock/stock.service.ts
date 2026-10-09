@@ -22,6 +22,7 @@ import { CloseLocationDto } from './dto/close-location.dto';
 import { DeliveryNotesService } from '../delivery-notes/delivery-notes.service';
 import { LocationsService } from '../locations/locations.service';
 import { balanceFor, reserveStock } from './stock-ledger';
+import { assertCupOwnership } from './cup-ownership';
 
 type Db = Prisma.TransactionClient | PrismaService;
 type Balance = Map<string, number>;
@@ -438,6 +439,7 @@ export class StockService {
       throw new BadRequestException(
         'Cup type does not belong to this company or is inactive',
       );
+    assertCupOwnership(cups, [eventId, source?.eventId, destination?.eventId]);
     const movement = await this.prisma.$transaction(
       async (tx) => {
         await this.lockEvent(tx, user, eventId);
@@ -594,6 +596,7 @@ export class StockService {
       throw new BadRequestException(
         'Cup type does not belong to this company or is inactive',
       );
+    assertCupOwnership(cups, [eventId, source.eventId, destination.eventId]);
     const movement = await this.prisma.$transaction(
       async (tx) => {
         await this.lockEvent(tx, user, eventId);

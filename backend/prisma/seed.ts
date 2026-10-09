@@ -11,6 +11,8 @@ import {
   StockMovementType,
 } from '@prisma/client';
 import * as argon2 from 'argon2';
+import { strict as assert } from 'node:assert';
+import { balanceFor } from '../src/stock/stock-ledger';
 
 const prisma = new PrismaClient();
 const password = 'Demo1234!';
@@ -212,7 +214,7 @@ async function main() {
   await movement('Seed: zona de lavado devuelve limpios a nave central', cleaning.id, central.id, StockMovementType.CLEANING_RETURN, [[cup33.id, 600, StockCondition.CLEAN]], null);
   await movement('Seed: nave central reenvía vasos limpios al evento', central.id, eventWarehouse.id, StockMovementType.DELIVERY, [[cup33.id, 600, StockCondition.CLEAN]], event.id);
   await movement('Seed: vasos perdidos en evento', eventWarehouse.id, null, StockMovementType.LOSS, [[cup33.id, 30, StockCondition.CLEAN]], event.id);
-  await movement('Seed: vasos rotos en Caseta Norte', booth.id, null, StockMovementType.BREAKAGE, [[cup50.id, 10, StockCondition.DAMAGED]], event.id);
+  await movement('Seed: vasos rotos recibidos en nave', central.id, null, StockMovementType.BREAKAGE, [[cup50.id, 10, StockCondition.DAMAGED]], null);
 
   await prisma.deliveryNote.upsert({
     where: { stockMovementId: warehouseDelivery.id },
@@ -229,6 +231,32 @@ async function main() {
     update: {}, create: { companyId: company.id, eventId: event.id, documentType: 'DELIVERY_NOTE', nextValue: 3 },
   });
 
+  const repeatEvent = await prisma.event.upsert({
+    where: { companyId_code: { companyId: company.id, code: 'FESTIVAL-2027-001' } },
+    update: {},
+    create: { companyId: company.id, name: 'Festival Demo 2027', code: 'FESTIVAL-2027-001', status: EventStatus.DRAFT, startDate: new Date('2027-10-02'), endDate: new Date('2027-10-04') },
+  });
+  for (const [owner, year] of [[event, '2026'], [repeatEvent, '2027']] as const) {
+    const edition = await prisma.cupType.upsert({
+      where: { companyId_code: { companyId: company.id, code: `CUP-33-FESTIVAL-${year}` } },
+      update: {},
+      create: { companyId: company.id, code: `CUP-33-FESTIVAL-${year}`, name: `Vaso 33cl · Festival ${year}`, capacityMl: 330, cost: 1, deposit: 1, baseTypeId: cup33.id, ownerEventId: owner.id },
+    });
+    await movement(`Seed: fábrica serigrafía ${year}`, null, central.id, StockMovementType.INITIAL_LOAD, [[edition.id, 1000, StockCondition.CLEAN]], null);
+    if (year === '2026') {
+      await movement('Seed: entrega serigrafiada al evento compatible', central.id, eventWarehouse.id, StockMovementType.DELIVERY, [[edition.id, 300, StockCondition.CLEAN]], event.id);
+      await movement('Seed: retorno serigrafiado sucio', eventWarehouse.id, central.id, StockMovementType.RETURN, [[edition.id, 100, StockCondition.DIRTY]], event.id);
+      await movement('Seed: lavado serigrafiado', central.id, cleaning.id, StockMovementType.CLEANING_SEND, [[edition.id, 100, StockCondition.DIRTY]], null);
+      await movement('Seed: serigrafiados limpios de nuevo', cleaning.id, central.id, StockMovementType.CLEANING_RETURN, [[edition.id, 80, StockCondition.CLEAN]], null);
+    }
+    const history = await prisma.stockMovement.findMany({ where: { companyId: company.id, status: StockMovementStatus.POSTED }, include: { items: true } });
+    assert.equal(balanceFor(history, central.id).get(`${edition.id}:CLEAN`), year === '2026' ? 780 : 1000);
+    if (year === '2026') {
+      assert.equal(balanceFor(history, cleaning.id).get(`${edition.id}:DIRTY`), 20);
+      assert.equal(balanceFor(history, eventWarehouse.id).get(`${edition.id}:CLEAN`), 200);
+    }
+  }
+  console.log('Serigrafías: Festival 2026 (780 limpios en nave, 20 en lavado, 200 en evento); Festival 2027 (1000 limpios en nave). Los genéricos son compartidos.');
   console.log(`Seed completado: ${company.name} · ${event.name}`);
   console.log(`Usuarios demo: admin@ecocups.demo, responsable@ecocups.demo, trabajador@ecocups.demo, cliente@ecocups.demo · contraseña: ${password}`);
   console.log('Escenario: nave con 1.000 €, fondo de barra de 100 €, segunda entrega cobrada de 200 € y recogida externa sin bloqueo de stock.');

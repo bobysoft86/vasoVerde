@@ -47,7 +47,7 @@
               ><mat-label>Tipo de vaso</mat-label
               ><mat-select [(ngModel)]="cupTypeId"
                 ><mat-option *ngFor="let cup of cups()" [value]="cup.id">{{
-                  cup.name
+                  (cup.displayName || cup.name)
                 }} · {{ stockLabel(cup.id) }}</mat-option></mat-select
               ></mat-form-field
             ><mat-form-field appearance="outline"
@@ -116,7 +116,7 @@
             ><mat-label>Tipo de vaso</mat-label
             ><mat-select [(ngModel)]="cupTypeId"
               ><mat-option *ngFor="let cup of cups()" [value]="cup.id">{{
-                cup.name
+                (cup.displayName || cup.name)
               }} · {{ stockLabel(cup.id, barType === 'DELIVERY' ? sourceId : locationId) }}</mat-option></mat-select
             ></mat-form-field
           ><mat-form-field appearance="outline"
@@ -162,7 +162,7 @@
         <div class="bar-stock-table">
           <div class="bar-stock-row header"><span>Vaso</span><span>Stock teórico</span><span>Recuento final</span></div>
           <div class="bar-stock-row" *ngFor="let cup of cups()">
-            <strong>{{ cup.name }}</strong>
+            <strong>{{ (cup.displayName || cup.name) }}</strong>
             <span>{{ theoreticalStock(cup.id) }}</span>
             <div class="bar-counts">
               <input type="number" min="0" [(ngModel)]="barCounts[cup.id].CLEAN" placeholder="Limpios" />

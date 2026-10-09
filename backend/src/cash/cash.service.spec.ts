@@ -379,4 +379,12 @@ describe('CashService transaction invariants', () => {
     expect(tx.stockMovement.create).not.toHaveBeenCalled();
     expect(tx.cashMovement.create).not.toHaveBeenCalled();
   });
+  it.each([CashMovementType.SALE, CashMovementType.REFUND])('rejects foreign editions in cash %s', async (type) => {
+    tx.cupType.findFirst.mockResolvedValue({ id: 'cup', ownerEventId: 'other-event' });
+    await expect(service.addMovement(user, 'event', session.id, {
+      type, amount: 1, concept: 'Cup', cupTypeId: 'cup', cupQuantity: 1,
+    })).rejects.toThrow('otro evento');
+    expect(tx.stockMovement.create).not.toHaveBeenCalled();
+    expect(tx.cashMovement.create).not.toHaveBeenCalled();
+  });
 });

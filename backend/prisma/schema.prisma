@@ -258,6 +258,7 @@ model Event {
   auditLogs           AuditLog[]
   barSettlements      BarSettlement[]
 
+  cupEditions CupType[]
   @@unique([companyId, code])
   @@index([companyId, status])
   @@index([companyId, startDate, endDate])
@@ -327,6 +328,11 @@ model CupType {
   cost            Decimal?            @db.Decimal(10, 2)
   deposit         Decimal?            @db.Decimal(10, 2)
   externalCode    String?
+  ownerEventId    String?
+  baseTypeId      String?
+  ownerEvent      Event? @relation(fields: [ownerEventId], references: [id], onDelete: Restrict)
+  baseType        CupType? @relation("CupEditions", fields: [baseTypeId], references: [id], onDelete: Restrict)
+  editions        CupType[] @relation("CupEditions")
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
   deletedAt       DateTime?
@@ -336,6 +342,8 @@ model CupType {
 
   @@unique([companyId, code])
   @@index([companyId, active])
+  @@index([ownerEventId])
+  @@index([baseTypeId])
 }
 
 model Location {

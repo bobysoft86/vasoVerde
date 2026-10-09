@@ -70,7 +70,7 @@ export class LocationClosuresComponent {
       );
     });
     this.api.cupTypes().subscribe((cups) => {
-      this.cups.set(cups);
+      this.cups.set(cups.filter(cup => cup.active && (!cup.ownerEventId || cup.ownerEventId === this.eventId)));
       for (const cup of cups) this.counts[cup.id] = { CLEAN: 0, DIRTY: 0, DAMAGED: 0 };
     });
   }

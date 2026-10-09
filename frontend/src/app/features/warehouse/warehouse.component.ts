@@ -336,6 +336,9 @@ export class WarehouseComponent {
   get needsEvent() {
     return this.operation === 'DELIVERY' || this.operation === 'RETURN';
   }
+  selectableCups() {
+    return this.cups().filter(cup => !this.needsEvent || !cup.ownerEventId || cup.ownerEventId === this.eventId);
+  }
   get adjustment() {
     return this.operation === 'LOSS' || this.operation === 'BREAKAGE';
   }
@@ -526,6 +529,8 @@ export class WarehouseComponent {
     const keys = new Set<string>();
     if (!this.lines.length) return 'Añade al menos una línea.';
     for (const line of this.lines) {
+      if (!this.selectableCups().some(cup => cup.id === line.cupTypeId))
+        return 'Selecciona vasos genéricos o pertenecientes al evento.';
       if (
         !this.cups().some((cup) => cup.id === line.cupTypeId) ||
         !Number.isSafeInteger(line.quantity) ||

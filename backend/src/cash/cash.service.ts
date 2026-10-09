@@ -1,3 +1,4 @@
+import { assertCupOwnership } from '../stock/cup-ownership';
 import {
   BadRequestException,
   ConflictException,
@@ -875,6 +876,7 @@ export class CashService {
           });
           if (!cup)
             throw new BadRequestException('Vessel type not found or inactive');
+          assertCupOwnership([cup], [operationEventId]);
           if (dto.type === CashMovementType.SALE) {
             const available = await this.availableClean(
               tx,

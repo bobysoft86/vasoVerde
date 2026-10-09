@@ -26,7 +26,7 @@
         ><mat-label>Tipo de vaso</mat-label
         ><mat-select [(ngModel)]="line.cupTypeId"
           ><mat-option *ngFor="let cup of cups()" [value]="cup.id">{{
-            cup.name
+            (cup.displayName || cup.name)
           }}</mat-option></mat-select
         ></mat-form-field
       >
@@ -258,8 +258,8 @@
       <mat-form-field appearance="outline">
         <mat-label>Tipo de vaso</mat-label>
         <mat-select [(ngModel)]="line.cupTypeId">
-          <mat-option *ngFor="let cup of cups()" [value]="cup.id">
-            {{ cup.name }} · {{ stockLabel(cup.id) }}
+          <mat-option *ngFor="let cup of selectableCups()" [value]="cup.id">
+            {{ (cup.displayName || cup.name) }} · {{ stockLabel(cup.id) }}
           </mat-option>
         </mat-select>
       </mat-form-field>

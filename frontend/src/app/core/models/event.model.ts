@@ -29,6 +29,10 @@ export interface Bar {
   clientUser?: { id: string; name: string; email: string } | null;
 }
 export interface CupType {
+  displayName?: string;
+  ownerEventId?: string | null;
+  baseTypeId?: string | null;
+  ownerEvent?: { id: string; name: string; code: string } | null;
   id: string;
   name: string;
   code: string;

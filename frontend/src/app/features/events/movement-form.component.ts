@@ -79,7 +79,7 @@ export class MovementFormComponent {
   }
   constructor() {
     this.api.locations(this.eventId).subscribe((value) => this.locations.set(value));
-    this.api.cupTypes().subscribe((value) => this.cups.set(value));
+    this.api.cupTypes().subscribe((value) => this.cups.set(value.filter(cup => cup.active && (!cup.ownerEventId || cup.ownerEventId === this.eventId))));
     this.cash.sessions(this.eventId).subscribe((value) => this.cashSessions.set(value.filter((session) => session.status === 'OPEN')));
     this.form.controls.sourceLocationId.valueChanges.subscribe(() => this.loadSourceStock());
     this.form.controls.type.valueChanges.subscribe(() => {

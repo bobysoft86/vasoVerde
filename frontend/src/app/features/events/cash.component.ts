@@ -75,7 +75,7 @@ export class CashComponent {
           ),
         ),
       );
-    this.events.cupTypes().subscribe((cups) => this.cups.set(cups));
+    this.events.cupTypes().subscribe((cups) => this.cups.set(cups.filter(cup => cup.active && (!cup.ownerEventId || cup.ownerEventId === this.eventId))));
   }
   load() {
     this.api.sessions(this.eventId).subscribe((sessions) => this.sessions.set(sessions));

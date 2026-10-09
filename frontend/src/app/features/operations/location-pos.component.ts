@@ -87,7 +87,7 @@ export class LocationPosComponent {
     }), (data) => {
       this.locations.set(data.locations.filter((item) => item.active));
       this.location.set(this.locations().find((item) => item.id === this.locationId) ?? null);
-      this.cups.set(data.cups.filter((item) => item.active));
+      this.cups.set(data.cups.filter((item) => item.active && (!item.ownerEventId || item.ownerEventId === this.eventId)));
       for (const cup of this.cups()) this.barCounts[cup.id] ??= { CLEAN: 0, DIRTY: 0, DAMAGED: 0 };
       this.sessions.set(data.sessions.filter((item) => item.location.id === this.locationId));
       this.session.set(this.sessions().find((item) => item.status === 'OPEN') ?? null);

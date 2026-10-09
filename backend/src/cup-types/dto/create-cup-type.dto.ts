@@ -9,6 +9,8 @@ import {
 } from 'class-validator';
 
 export class CreateCupTypeDto {
+  @IsOptional() @IsString() ownerEventId?: string;
+  @IsOptional() @IsString() baseTypeId?: string;
   @ApiProperty() @IsString() @MinLength(2) name!: string;
   @ApiProperty({ example: 'CUP-33' }) @IsString() @MinLength(2) code!: string;
   @ApiProperty({ required: false, example: 330 })

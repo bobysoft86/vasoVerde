@@ -31,7 +31,7 @@
       <span>Tipo</span><span>Limpios</span><span>Sucios</span><span>Dañados</span>
     </div>
     <div class="row" *ngFor="let cup of cups()">
-      <b>{{ cup.name }}</b
+      <b>{{ (cup.displayName || cup.name) }}</b
       ><input type="number" min="0" [(ngModel)]="counts[cup.id].CLEAN" /><input
         type="number"
         min="0"

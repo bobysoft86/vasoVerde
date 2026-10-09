@@ -10,6 +10,20 @@
 </div>
 <mat-card *ngIf="showForm()" class="form-card"
   ><form [formGroup]="form" (ngSubmit)="save()">
+    <p>Cada serigrafía es una referencia independiente. Su evento y modelo no se pueden cambiar después.</p>
+    <mat-form-field><mat-label>Evento de la serigrafía</mat-label>
+      <mat-select formControlName="ownerEventId">
+        <mat-option value="">Genérico (todos los eventos)</mat-option>
+        <mat-option *ngFor="let event of events()" [value]="event.id">{{ event.name }} · {{ event.code }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field><mat-label>Modelo físico</mat-label>
+      <mat-select formControlName="baseTypeId">
+        <mat-option value="">Esta referencia es un modelo genérico</mat-option>
+        <mat-option *ngFor="let cup of bases()" [value]="cup.id">{{ cup.name }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+    <p *ngIf="error()">{{ error() }}</p>
     <mat-form-field appearance="outline"
       ><mat-label>Nombre</mat-label><input matInput formControlName="name" /></mat-form-field
     ><mat-form-field appearance="outline"
@@ -27,6 +41,7 @@
     ><div>
       <strong>{{ item.name }}</strong
       ><small>{{ item.code }} · {{ item.capacityMl || '—' }} ml</small>
+      <small>{{ item.ownerEvent ? item.ownerEvent.name + ' · ' + item.ownerEvent.code : 'Genérico' }}</small>
     </div>
     <span [class.off]="!item.active">{{ item.active ? 'Activo' : 'Inactivo' }}</span
     ><button mat-button (click)="edit(item)">Editar</button
