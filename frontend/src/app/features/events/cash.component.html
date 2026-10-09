@@ -10,7 +10,8 @@
   </div>
 </div>
 <mat-card class="open-card"
-  ><h3>Abrir caja</h3>
+    ><h3>Abrir caja</h3>
+  <p class="hint">Las cajas de evento se abren a 0 €. El fondo se añade después mediante una transferencia desde la nave central.</p>
   <div class="form">
     <mat-form-field appearance="outline"
       ><mat-label>Ubicación</mat-label
@@ -21,7 +22,7 @@
       ></mat-form-field
     ><mat-form-field appearance="outline"
       ><mat-label>Fondo inicial para cambio (€)</mat-label
-      ><input matInput type="number" min="0" [(ngModel)]="openingAmount" /></mat-form-field
+      ><input matInput type="number" min="0" value="0" readonly [(ngModel)]="openingAmount" /></mat-form-field
     ><button mat-flat-button color="primary" (click)="open()">Abrir caja</button>
   </div></mat-card
 >

@@ -20,10 +20,11 @@
     <section *ngIf="current.type !== 'BAR'" class="cash-area">
       <mat-card *ngIf="!session()" class="open"
         ><h2>Abrir caja</h2>
+        <p class="hint">Primero abre a 0 € y después solicita el fondo desde la caja central.</p>
         <p>Introduce el fondo inicial disponible para devolver dinero.</p>
         <mat-form-field appearance="outline"
           ><mat-label>Fondo inicial (€)</mat-label
-          ><input matInput type="number" min="0" [(ngModel)]="openingAmount" /></mat-form-field
+          ><input matInput type="number" min="0" value="0" readonly [(ngModel)]="openingAmount" /></mat-form-field
         ><button mat-flat-button color="primary" (click)="openCash()">Abrir caja</button></mat-card
       ><ng-container *ngIf="session() as cash"
         ><mat-card class="balance"

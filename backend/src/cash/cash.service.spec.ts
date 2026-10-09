@@ -115,13 +115,20 @@ describe('CashService transaction invariants', () => {
     await expect(
       service.open(user, 'event', {
         locationId: location.id,
-        openingAmount: 10,
+        openingAmount: 0,
       }),
     ).rejects.toBeInstanceOf(ConflictException);
     expect(tx.cashSession.create).not.toHaveBeenCalled();
     expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
       isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
     });
+  });
+
+  it('does not create event cash from an invented opening balance', async () => {
+    await expect(
+      service.open(user, 'event', { locationId: location.id, openingAmount: 10 }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it.each(['close', 'movement', 'transfer'])(

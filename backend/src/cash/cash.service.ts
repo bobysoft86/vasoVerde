@@ -342,6 +342,10 @@ export class CashService {
   }
 
   async open(user: AuthUser, eventId: string | null, dto: OpenCashSessionDto) {
+    if (eventId && dto.openingAmount !== 0)
+      throw new BadRequestException(
+        'Las cajas de evento deben abrirse a 0 €. El fondo inicial debe transferirse desde la nave central.',
+      );
     const session = await this.prisma.$transaction(
       async (tx) => {
         await this.operator(tx, user, eventId);
