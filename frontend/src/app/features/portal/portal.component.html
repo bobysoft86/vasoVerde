@@ -4,7 +4,7 @@
       <div class="brand"><span>VV</span><strong>Vaso Verde</strong></div>
       <p class="eyebrow">PORTAL OPERATIVO</p>
       <h1>Hola, {{ auth.currentUser()?.name }}</h1>
-      <p class="subtitle">Selecciona un evento para comenzar a trabajar.</p>
+      <p class="subtitle">Tus puestos asignados están listos para abrir con un toque.</p>
     </div>
     <button mat-icon-button (click)="logout()" aria-label="Cerrar sesión">
       <mat-icon>logout</mat-icon>
@@ -14,28 +14,25 @@
     <mat-icon>get_app</mat-icon
     ><span>Puedes añadir Vaso Verde a la pantalla de inicio desde el menú del navegador.</span>
   </section>
-  <div class="cards">
-    <a
-      class="event-card"
-      *ngFor="let event of events()"
-      [routerLink]="['/events', event.id, 'operate']"
-      ><div class="card-top">
-        <span class="status">{{ event.status }}</span
-        ><mat-icon>arrow_forward</mat-icon>
-      </div>
-      <h2>{{ event.name }}</h2>
-      <p class="code">{{ event.code }}</p>
-      <p class="location" *ngIf="event.location">
-        <mat-icon>location_on</mat-icon>{{ event.location }}
-      </p>
-      <div class="card-foot">
-        <span
-          >{{ event.startDate | date: 'dd/MM/yyyy' }} —
-          {{ event.endDate | date: 'dd/MM/yyyy' }}</span
-        ><strong>Operar evento</strong>
-      </div></a
-    >
-  </div>
+  <a class="resume-card" *ngIf="lastWork() as work" [routerLink]="['/work', work.eventId, work.locationId]">
+    <span class="resume-icon"><mat-icon>play_arrow</mat-icon></span>
+    <span><small>CONTINUAR DONDE LO DEJASTE</small><strong>{{ work.locationName }}</strong><em>{{ work.eventName }}</em></span>
+    <strong class="resume-action">Abrir turno</strong>
+  </a>
+  <section class="event-block" *ngFor="let event of events()">
+    <header class="event-heading">
+      <div><span class="status" [class.finished]="!canOperate(event.status)">{{ eventStatus(event.status) }}</span><h2>{{ event.name }}</h2><p>{{ event.location || event.code }} · {{ event.startDate | date: 'dd/MM/yyyy' }} — {{ event.endDate | date: 'dd/MM/yyyy' }}</p></div>
+      <strong>{{ event.workLocations.length }} {{ event.workLocations.length === 1 ? 'puesto' : 'puestos' }}</strong>
+    </header>
+    <div class="work-locations" *ngIf="event.workLocations.length; else noWorkLocations">
+      <a class="work-location" *ngFor="let location of event.workLocations" [class.disabled]="!canOperate(event.status)" [routerLink]="canOperate(event.status) ? ['/work', event.id, location.id] : null">
+        <span class="work-icon"><mat-icon>{{ location.type === 'BAR' ? 'local_bar' : location.type === 'BOOTH' ? 'storefront' : 'warehouse' }}</mat-icon></span>
+        <span class="work-copy"><small>{{ locationType(location.type) }}</small><strong>{{ location.name }}</strong></span>
+        <strong class="start-label">{{ canOperate(event.status) ? 'Empezar turno' : 'No disponible' }}</strong><mat-icon>arrow_forward</mat-icon>
+      </a>
+    </div>
+    <ng-template #noWorkLocations><div class="no-location"><mat-icon>info</mat-icon><span>No tienes un puesto asignado en este evento. Pide al responsable que te asigne una ubicación.</span></div></ng-template>
+  </section>
   <div class="empty" *ngIf="!loading() && !events().length">
     <mat-icon>event_busy</mat-icon>
     <h2>No tienes eventos asignados</h2>

@@ -53,9 +53,10 @@ export class LocationPosComponent {
   private readonly cash = inject(CashService);
   private readonly router = inject(Router);
   readonly state = new OperationalState();
-  readonly eventId = this.route.parent?.snapshot.paramMap.get('eventId') ?? '';
+  readonly eventId = this.route.snapshot.paramMap.get('eventId') ?? this.route.parent?.snapshot.paramMap.get('eventId') ?? '';
   readonly locationId = this.route.snapshot.paramMap.get('locationId') ?? '';
   readonly location = signal<Location | null>(null);
+  readonly eventName = signal('');
   readonly locations = signal<Location[]>([]);
   readonly cups = signal<CupType[]>([]);
   readonly session = signal<CashSession | null>(null);
@@ -65,6 +66,11 @@ export class LocationPosComponent {
   readonly sessions = signal<CashSession[]>([]);
   readonly barSettlement = signal<BarSettlementPreview | null>(null);
   readonly barClosed = signal(false);
+  readonly cashClosed = signal(false);
+  readonly closeWizardOpen = signal(false);
+  readonly showIncidentForm = signal(false);
+  readonly incidentSaving = signal(false);
+  readonly incidentNotice = signal('');
   openingAmount = 0;
   cupTypeId = '';
   quantity = 1;
@@ -74,28 +80,43 @@ export class LocationPosComponent {
   destinationId = '';
   deliveryChargeable = false;
   deliveryChargeAmount = 0;
-  barCounts: Record<string, { CLEAN: number; DIRTY: number; DAMAGED: number }> = {};
+  barCounts: Record<string, { CLEAN: number | null; DIRTY: number | null; DAMAGED: number | null }> = {};
+  cashClosingAmount = 0;
+  incidentTitle = '';
+  incidentDescription = '';
+  incidentType = 'OPERATIONAL';
   otherType: CashMovementType = 'CASH_IN';
   otherAmount = 1;
   constructor() {
     this.sourceId = this.locationId;
+    if (typeof localStorage !== 'undefined' && this.eventId && this.locationId) {
+      try { localStorage.setItem('vv:last-work', JSON.stringify({ eventId: this.eventId, locationId: this.locationId })); } catch { /* storage may be disabled */ }
+    }
     this.state.watch(() => forkJoin({
+      event: this.events.get(this.eventId),
       locations: this.events.locations(this.eventId),
       cups: this.events.cupTypes(),
       sessions: this.cash.sessions(this.eventId),
       stock: this.events.stock(this.eventId),
     }), (data) => {
+      this.eventName.set(data.event.name);
       this.locations.set(data.locations.filter((item) => item.active));
       this.location.set(this.locations().find((item) => item.id === this.locationId) ?? null);
       this.cups.set(data.cups.filter((item) => item.active && (!item.ownerEventId || item.ownerEventId === this.eventId)));
-      for (const cup of this.cups()) this.barCounts[cup.id] ??= { CLEAN: 0, DIRTY: 0, DAMAGED: 0 };
+      for (const cup of this.cups()) this.barCounts[cup.id] ??= { CLEAN: null, DIRTY: null, DAMAGED: null };
       this.sessions.set(data.sessions.filter((item) => item.location.id === this.locationId));
       this.session.set(this.sessions().find((item) => item.status === 'OPEN') ?? null);
+      this.cashClosed.set(this.sessions().some((item) => item.status === 'CLOSED'));
       this.stock.set(data.stock);
+      if (this.location()?.type === 'BAR' && !this.destinationId) {
+        const defaultCounterpart = this.counterparts().find((item) => item.type === 'EVENT_WAREHOUSE') ?? this.counterparts()[0];
+        if (defaultCounterpart) this.destinationId = defaultCounterpart.id;
+      }
       if (!this.location()) this.error.set('Este punto de trabajo no está disponible.');
       if (this.location()?.type === 'BAR') this.loadBarSettlement();
     });
   }
+  backLink() { return this.route.parent?.snapshot.paramMap.get('eventId') ? ['/events', this.eventId, 'operate'] : ['/portal']; }
   loadBarSettlement() {
     this.cash.barSettlementPreview(this.eventId, this.locationId).subscribe({
       next: (preview) => {
@@ -111,15 +132,17 @@ export class LocationPosComponent {
   }
   setDirection(type: 'DELIVERY' | 'RETURN') {
     if (this.state.busy()) return;
-    const counterpart = this.barType === 'RETURN' ? this.destinationId : this.sourceId;
+    const oldCounterpart = this.barType === 'RETURN' ? this.destinationId : this.sourceId;
+    const counterpart = this.counterparts().find((item) => item.id === oldCounterpart) ??
+      this.counterparts().find((item) => item.type === 'EVENT_WAREHOUSE') ?? this.counterparts()[0];
     this.barType = type;
     this.condition = type === 'DELIVERY' ? 'CLEAN' : 'DIRTY';
     if (type === 'RETURN') {
       this.deliveryChargeable = false;
       this.deliveryChargeAmount = 0;
     }
-    this.sourceId = type === 'RETURN' ? this.locationId : counterpart;
-    this.destinationId = type === 'DELIVERY' ? this.locationId : counterpart;
+    this.sourceId = type === 'RETURN' ? this.locationId : counterpart?.id ?? '';
+    this.destinationId = type === 'DELIVERY' ? this.locationId : counterpart?.id ?? '';
   }
   counterparts() {
     return this.locations().filter((item) => item.id !== this.locationId &&
@@ -161,6 +184,16 @@ export class LocationPosComponent {
     );
     return `L ${values[0]} · S ${values[1]} · D ${values[2]}`;
   }
+  stockLocationForBarType() { return this.barType === 'DELIVERY' ? this.sourceId : this.locationId; }
+  locationName(id: string) { return this.locations().find((item) => item.id === id)?.name ?? ''; }
+  showSettlement() { return this.closeWizardOpen() || this.barClosed(); }
+  stockActionSummary() {
+    const cup = this.cups().find((item) => item.id === this.cupTypeId);
+    if (!cup || !this.validQuantity()) return '';
+    const action = this.barType === 'DELIVERY' ? 'Entregar' : 'Recoger';
+    const condition = this.barType === 'DELIVERY' ? 'limpios' : this.condition === 'CLEAN' ? 'limpios' : this.condition === 'DAMAGED' ? 'dañados' : 'sucios';
+    return `${action} ${this.quantity} ${cup.displayName || cup.name} ${condition} ${this.barType === 'DELIVERY' ? 'desde ' + this.locationName(this.sourceId) : 'para ' + this.locationName(this.destinationId)}.`;
+  }
   history() {
     return this.sessions().flatMap((session) => session.movements)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 12);
@@ -186,7 +219,7 @@ export class LocationPosComponent {
     this.write(() => this.cash.open(this.eventId, {
         locationId: this.locationId,
         openingAmount: Number(this.openingAmount),
-      }), (value) => this.session.set(value), 'Caja abierta.');
+      }), (value) => { this.session.set(value); this.cashClosed.set(false); }, 'Caja abierta.');
   }
   movement(type: CashMovementType, amount: number, concept: string) {
     const session = this.session();
@@ -241,15 +274,18 @@ export class LocationPosComponent {
   closeCash() {
     const current = this.session();
     if (!current || this.writesBlocked()) return;
-    const amount = window.prompt('Importe contado en caja (€)', String(current.expectedAmount));
-    if (amount === null) return;
-    const counted = Number(amount.trim().replace(',', '.'));
-    if (!amount.trim() || !this.validMoney(counted, true)) {
+    const counted = Number(this.cashClosingAmount);
+    if (!this.validMoney(counted, true)) {
       this.error.set('Introduce un importe contado válido, igual o mayor que cero.');
       return;
     }
     this.write(() => this.cash.close(this.eventId, current.id, counted),
-      () => this.session.set(null), 'Caja cerrada.');
+      () => { this.session.set(null); this.cashClosed.set(true); }, 'Caja cerrada.');
+  }
+  startCloseWizard() {
+    this.error.set('');
+    this.cashClosingAmount = Number(this.session()?.expectedAmount ?? 0);
+    this.closeWizardOpen.set(true);
   }
   saveStock() {
     if (this.writesBlocked()) return;
@@ -262,7 +298,7 @@ export class LocationPosComponent {
       this.error.set('Selecciona origen, destino y una cantidad entera válida.');
       return;
     }
-    this.condition = returning ? 'DIRTY' : 'CLEAN';
+    if (!returning) this.condition = 'CLEAN';
     const available = this.stockQuantity(this.sourceId, 'CLEAN');
     if (!returning && available !== null && Number(this.quantity) > available) {
       this.error.set('La entrega supera el stock limpio disponible en origen.');
@@ -296,10 +332,13 @@ export class LocationPosComponent {
   }
   closeBar() {
     if (this.writesBlocked() || this.location()?.type !== 'BAR' || this.barClosed()) return;
-    const items = this.cups().flatMap((cup) =>
-      (['CLEAN', 'DIRTY', 'DAMAGED'] as const)
-        .filter((condition) => Number(this.barCounts[cup.id]?.[condition]) > 0)
-        .map((condition) => ({ cupTypeId: cup.id, condition, quantity: Number(this.barCounts[cup.id][condition]) })),
+    const allCounts = this.cups().flatMap((cup) => ['CLEAN', 'DIRTY', 'DAMAGED'].map((condition) => ({ cup, condition: condition as 'CLEAN' | 'DIRTY' | 'DAMAGED', count: this.barCounts[cup.id]?.[condition as 'CLEAN' | 'DIRTY' | 'DAMAGED'] })));
+    if (allCounts.some(({ count }) => count === null || count === undefined || !Number.isSafeInteger(Number(count)) || Number(count) < 0)) {
+      this.error.set('Completa el recuento de vasos limpios, sucios y dañados. Escribe 0 si no hay unidades.');
+      return;
+    }
+    const items = allCounts.flatMap(({ cup, condition, count }) =>
+      Number(count) > 0 ? [{ cupTypeId: cup.id, condition, quantity: Number(count) }] : [],
     );
     if (!this.counterparts().some((item) => item.id === this.destinationId)) {
       this.error.set('Selecciona el destino de la recogida final antes de cerrar la barra.');
@@ -321,5 +360,16 @@ export class LocationPosComponent {
     if (!preview || this.writesBlocked() || !this.barClosed()) return;
     this.write(() => this.cash.settleBar(this.eventId, { locationId: this.locationId, ...(current ? { cashSessionId: current.id } : {}) }),
       () => this.loadBarSettlement(), 'Liquidación de barra registrada en caja.');
+  }
+  reportProblem() {
+    if (this.writesBlocked() || this.incidentSaving() || !this.incidentTitle.trim()) return;
+    this.incidentSaving.set(true); this.incidentNotice.set('');
+    this.events.createIncident(this.eventId, {
+      kind: 'INCIDENT', type: this.incidentType, priority: 'NORMAL', title: this.incidentTitle.trim(),
+      description: this.incidentDescription.trim() || undefined, locationId: this.locationId,
+    }).subscribe({
+      next: () => { this.incidentSaving.set(false); this.showIncidentForm.set(false); this.incidentTitle = ''; this.incidentDescription = ''; this.incidentNotice.set('Aviso guardado. El responsable puede verlo en el resumen y en Avisos e incidencias.'); },
+      error: () => { this.incidentSaving.set(false); this.incidentNotice.set('No se pudo enviar. Comprueba la conexión e inténtalo otra vez.'); },
+    });
   }
 }

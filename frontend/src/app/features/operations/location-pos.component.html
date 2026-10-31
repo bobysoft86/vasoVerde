@@ -1,10 +1,11 @@
 <main class="pos">
-  <a class="back" [routerLink]="['/events', eventId, 'operate']">← Puntos de trabajo</a
+  <a class="back" [routerLink]="backLink()">← {{ backLink()[0] === '/portal' ? 'Mis puestos' : 'Puntos de trabajo' }}</a
   ><ng-container *ngIf="location() as current"
     ><header>
       <div>
         <p class="eyebrow">{{ current.type === 'BAR' ? 'OPERATIVA DE VASOS' : 'CAJA POS' }}</p>
         <h1>{{ current.name }}</h1>
+        <p class="event-breadcrumb">{{ eventName() }}</p>
         <p>
           {{
             current.type === 'BAR'
@@ -17,6 +18,7 @@
         <mat-icon>{{ current.type === 'BAR' ? 'local_bar' : 'point_of_sale' }}</mat-icon>
       </div>
     </header>
+    <div class="offline-banner" *ngIf="state.offline()"><mat-icon>wifi_off</mat-icon>Sin conexión. Puedes consultar; las operaciones están pausadas para evitar duplicados.</div>
     <section *ngIf="current.type !== 'BAR'" class="cash-area">
       <mat-card *ngIf="!session()" class="open"
         ><h2>Abrir caja</h2>
@@ -32,7 +34,7 @@
             <span>Saldo esperado</span
             ><strong>{{ cash.expectedAmount | number: '1.2-2' }} €</strong>
           </div>
-          <button mat-stroked-button (click)="closeCash()">Cerrar caja</button></mat-card
+          <button mat-stroked-button (click)="startCloseWizard()">Cerrar turno</button></mat-card
         ><mat-card class="quick"
           ><h2>Operación rápida</h2>
           <div class="quick-grid">
@@ -55,32 +57,35 @@
               ><input matInput type="number" min="1" [(ngModel)]="quantity"
             /></mat-form-field>
           </div>
-          <div class="cash-extra">
+          <details class="advanced-cash"><summary>Otras operaciones de caja</summary><div class="cash-extra">
             <mat-form-field appearance="outline"
               ><mat-label>Otra operación</mat-label
               ><mat-select [(ngModel)]="otherType"
                 ><mat-option value="CASH_IN">Entrada de efectivo</mat-option
                 ><mat-option value="CASH_OUT">Salida de efectivo</mat-option
-                ><mat-option value="COLLECTION">Retirada / recaudación</mat-option></mat-select
+                ><mat-option value="WITHDRAWAL">Retirada / recaudación</mat-option></mat-select
               ></mat-form-field
             ><mat-form-field appearance="outline"
               ><mat-label>Importe (€)</mat-label
               ><input matInput type="number" min="0.01" [(ngModel)]="otherAmount" /></mat-form-field
             ><button mat-stroked-button (click)="otherMovement()">Registrar</button>
-          </div></mat-card
+          </div></details></mat-card
         ></ng-container
       >
     </section>
     <section *ngIf="current.type === 'BAR'" class="bar-area">
       <mat-card class="bar-cash">
         <div *ngIf="!session()">
-          <h2>Caja de la barra</h2>
-          <p class="hint">Abre a 0 € y recibe el fondo mediante una transferencia desde la nave central.</p>
-          <button mat-stroked-button color="primary" (click)="openCash()">Abrir caja a 0 €</button>
+          <h2>{{ barClosed() ? 'Barra cerrada' : 'Caja de la barra' }}</h2>
+          <p class="hint" *ngIf="!barClosed()">Abre a 0 € y recibe el fondo mediante una transferencia desde la nave central.</p>
+          <button *ngIf="!barClosed()" mat-stroked-button color="primary" (click)="openCash()">Abrir caja a 0 €</button>
+          <button *ngIf="!barClosed()" mat-button (click)="startCloseWizard()">Cerrar turno de vasos</button>
+          <button *ngIf="barClosed() && !barSettlement()?.settlementId" mat-stroked-button (click)="startCloseWizard()">Revisar liquidación pendiente</button>
+          <p *ngIf="barClosed() && barSettlement()?.settlementId" class="hint">El cierre de vasos y la liquidación están registrados.</p>
         </div>
         <div *ngIf="session() as cash" class="bar-cash-row">
-          <div><span>Saldo esperado</span><strong>{{ cash.expectedAmount | number: '1.2-2' }} €</strong></div>
-          <button mat-stroked-button (click)="closeCash()">Cerrar caja</button>
+          <div><span>Caja abierta · saldo esperado</span><strong>{{ cash.expectedAmount | number: '1.2-2' }} €</strong></div>
+          <button mat-stroked-button (click)="startCloseWizard()">Cerrar turno</button>
         </div>
       </mat-card>
       <mat-card
@@ -97,29 +102,26 @@
               : 'Entrega: se descontará stock limpio del origen.'
           }}
         </p>
+        <p class="selected" *ngIf="barType === 'RETURN'">Los vasos recogidos se registran como sucios. Si recoges vasos limpios o dañados, indícalo en Estado.</p>
         <div class="fields">
-          <mat-form-field appearance="outline"
-            ><mat-label>Origen</mat-label
+          <mat-form-field appearance="outline" *ngIf="barType === 'DELIVERY'"
+            ><mat-label>Entregar desde</mat-label
             ><mat-select [(ngModel)]="sourceId"
-              ><mat-option *ngFor="let item of selectableSources()" [value]="item.id">{{
-                item.name
-              }}</mat-option></mat-select
+              ><mat-option *ngFor="let item of selectableSources()" [value]="item.id">{{ item.name }}</mat-option></mat-select
             ></mat-form-field
-          ><mat-form-field appearance="outline"
-            ><mat-label>Destino</mat-label
+          ><mat-form-field appearance="outline" *ngIf="barType === 'RETURN'"
+            ><mat-label>Recoger y llevar a</mat-label
             ><mat-select [(ngModel)]="destinationId"
-              ><mat-option *ngFor="let item of selectableDestinations()" [value]="item.id">{{
-                item.name
-              }}</mat-option></mat-select
+              ><mat-option *ngFor="let item of selectableDestinations()" [value]="item.id">{{ item.name }}</mat-option></mat-select
             ></mat-form-field
           ><mat-form-field appearance="outline"
             ><mat-label>Tipo de vaso</mat-label
             ><mat-select [(ngModel)]="cupTypeId"
               ><mat-option *ngFor="let cup of cups()" [value]="cup.id">{{
                 (cup.displayName || cup.name)
-              }} · {{ stockLabel(cup.id, barType === 'DELIVERY' ? sourceId : locationId) }}</mat-option></mat-select
+              }} · {{ stockLabel(cup.id, stockLocationForBarType()) }}</mat-option></mat-select
             ></mat-form-field
-          ><mat-form-field appearance="outline"
+          ><mat-form-field appearance="outline" *ngIf="barType === 'RETURN'"
             ><mat-label>Estado</mat-label
             ><mat-select [(ngModel)]="condition"
               ><mat-option value="CLEAN">Limpio</mat-option
@@ -131,24 +133,28 @@
             ><input matInput type="number" min="1" [(ngModel)]="quantity"
           /></mat-form-field>
         </div>
-        <div class="delivery-charge" *ngIf="barType === 'DELIVERY'">
+        <details class="delivery-options" *ngIf="barType === 'DELIVERY'">
+          <summary>Opciones de entrega</summary>
+          <div class="delivery-charge">
           <mat-checkbox [(ngModel)]="deliveryChargeable">Cobrar esta entrega a la barra</mat-checkbox>
           <mat-form-field appearance="outline" *ngIf="deliveryChargeable">
             <mat-label>Importe cobrado (€)</mat-label>
             <input matInput type="number" min="0.01" step="0.01" [(ngModel)]="deliveryChargeAmount" />
           </mat-form-field>
           <small *ngIf="!session()">Necesitas abrir la caja de la barra para registrar el cobro.</small>
-        </div>
+          </div>
+        </details>
+        <p class="action-review" *ngIf="stockActionSummary()"><mat-icon>fact_check</mat-icon>{{ stockActionSummary() }}</p>
         <button
           mat-flat-button
           color="primary"
           [disabled]="!cupTypeId || !sourceId || !destinationId || (deliveryChargeable && (!session() || !validMoney(deliveryChargeAmount)))"
           (click)="saveStock()"
         >
-          Guardar y generar albarán
+          Confirmar {{ barType === 'DELIVERY' ? 'entrega' : 'recogida' }} y generar albarán
         </button></mat-card
       >
-      <mat-card class="bar-close">
+      <mat-card class="bar-close" *ngIf="closeWizardOpen() && !barClosed()">
         <h2>Cierre de barra</h2>
         <p class="hint">El stock teórico se calcula con las entregas y recogidas registradas. Introduce el recuento real para cerrar, aunque la barra tenga vasos de más o de menos.</p>
         <div class="bar-close-destination">
@@ -175,7 +181,7 @@
           {{ barClosed() ? 'Barra cerrada' : 'Cerrar barra y calcular liquidación' }}
         </button>
       </mat-card>
-      <mat-card class="bar-settlement" *ngIf="barSettlement() as settlement">
+      <mat-card class="bar-settlement" *ngIf="showSettlement() && barSettlement() as settlement">
         <h2>Liquidación económica</h2>
         <p>Entregados: <strong>{{ settlement.totalDelivered }}</strong> · Recogidos: <strong>{{ settlement.totalCollected }}</strong> · Anticipado: <strong>{{ settlement.prepaidAmount | number: '1.2-2' }} €</strong></p>
         <p *ngIf="settlement.direction === 'COLLECT'">La barra debe abonar <strong>{{ settlement.balanceAmount | number: '1.2-2' }} €</strong>.</p>
@@ -189,5 +195,37 @@
       </mat-card>
     </section></ng-container
   >
+  <mat-card class="close-wizard" *ngIf="closeWizardOpen() && location() as current">
+    <h2>Cerrar turno · {{ current.name }}</h2>
+    <ng-container *ngIf="current.type === 'BAR'">
+      <p *ngIf="!barClosed()">1. Haz el recuento de vasos y cierra la barra. Después revisa y registra la liquidación.</p>
+      <p *ngIf="barClosed() && !barSettlement()?.settlementId">Barra cerrada. Revisa el saldo de la liquidación y regístrala antes de cerrar la caja.</p>
+      <ng-container *ngIf="barClosed() && barSettlement()?.settlementId && session() as cash">
+        <p>2. Liquidación registrada. Cuenta el efectivo real para cerrar la caja.</p>
+        <mat-form-field appearance="outline"><mat-label>Efectivo contado (€)</mat-label><input matInput type="number" min="0" step="0.01" [(ngModel)]="cashClosingAmount" /></mat-form-field>
+        <button mat-flat-button color="primary" (click)="closeCash()">Confirmar cierre de caja · saldo esperado {{ cash.expectedAmount | number:'1.2-2' }} €</button>
+      </ng-container>
+      <p *ngIf="barClosed() && barSettlement()?.settlementId && !session()">Turno completado. La caja está cerrada.</p>
+    </ng-container>
+    <ng-container *ngIf="current.type !== 'BAR' && session() as cash">
+      <p>Cuenta el efectivo que queda y compáralo con el saldo esperado.</p>
+      <mat-form-field appearance="outline"><mat-label>Efectivo contado (€)</mat-label><input matInput type="number" min="0" step="0.01" [(ngModel)]="cashClosingAmount" /></mat-form-field>
+      <p>Saldo esperado: <strong>{{ cash.expectedAmount | number:'1.2-2' }} €</strong></p>
+      <button mat-flat-button color="primary" (click)="closeCash()">Confirmar cierre de caja</button>
+    </ng-container>
+    <p *ngIf="current.type !== 'BAR' && !session() && cashClosed()">Caja cerrada. El turno ha terminado.</p>
+    <button mat-button type="button" (click)="closeWizardOpen.set(false)">Volver al puesto</button>
+  </mat-card>
+  <section class="report-problem">
+    <button mat-stroked-button type="button" [disabled]="writesBlocked()" (click)="showIncidentForm.set(!showIncidentForm())"><mat-icon>support_agent</mat-icon>Registrar un aviso</button>
+    <p *ngIf="incidentNotice()" role="status">{{ incidentNotice() }}</p>
+    <mat-card *ngIf="showIncidentForm()" class="incident-form">
+      <h2>Enviar un aviso</h2>
+      <mat-form-field appearance="outline"><mat-label>Tipo</mat-label><mat-select [(ngModel)]="incidentType"><mat-option value="OPERATIONAL">Problema operativo</mat-option><mat-option value="STOCK">Faltan vasos</mat-option><mat-option value="CASH">Problema de caja</mat-option><mat-option value="SAFETY">Seguridad</mat-option><mat-option value="OTHER">Otro</mat-option></mat-select></mat-form-field>
+      <mat-form-field appearance="outline"><mat-label>¿Qué ocurre?</mat-label><input matInput maxlength="140" [(ngModel)]="incidentTitle" /></mat-form-field>
+      <mat-form-field appearance="outline"><mat-label>Detalles (opcional)</mat-label><textarea matInput rows="3" maxlength="1500" [(ngModel)]="incidentDescription"></textarea></mat-form-field>
+      <button mat-flat-button color="primary" [disabled]="incidentSaving() || !incidentTitle.trim()" (click)="reportProblem()">{{ incidentSaving() ? 'Enviando…' : 'Enviar aviso' }}</button>
+    </mat-card>
+  </section>
   <p class="error" *ngIf="error()">{{ error() }}</p>
 </main>

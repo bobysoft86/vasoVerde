@@ -86,5 +86,5 @@ export interface EventDashboard {
     entityId: string;
   }>;
   recentActivity: Array<{ type: string; id: string; at: string; title: string; detail: string }>;
-  incidents: Array<{ id: string; title: string; status: string }>;
+  incidents: Array<{ id: string; title: string; status: string; priority: string; location: { name: string } | null }>;
 }

@@ -135,3 +135,14 @@
   .settlement-totals { gap: 6px; }
   .settlement-totals strong { font-size: 12px; }
 }
+.incident-summary { padding: 20px 24px; margin: 18px 0; }
+.incident-summary-head { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
+.incident-summary-head > div { flex: 1; }
+.incident-summary-head h2 { margin: 2px 0 0; color: #244333; }
+.incident-summary-head > span { color: #76867d; }
+.incident-summary-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid #edf1ee; }
+.incident-summary-row mat-icon { color: #ac7420; }
+.incident-summary-row mat-icon.urgent { color: #b3261e; }
+.incident-summary-row div { display: grid; gap: 4px; flex: 1; }
+.incident-summary-row small { color: #7d8982; }
+.incident-priority { color: #68786f; font-size: 13px; }

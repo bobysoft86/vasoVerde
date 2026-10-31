@@ -62,6 +62,9 @@ export class EventsService {
   locations(eventId: string) {
     return this.http.get<Location[]>(`${this.url}/events/${eventId}/locations`);
   }
+  operationalLocations(eventId: string) {
+    return this.http.get<Location[]>(`${this.url}/events/${eventId}/operational-locations`);
+  }
   userCandidates(eventId: string) {
     return this.http.get<
       Array<{ id: string; name: string; email: string; active: boolean; globalRole: string }>

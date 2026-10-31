@@ -35,6 +35,11 @@ export const routes: Routes = [
           import('./features/warehouse/warehouse.component').then((m) => m.WarehouseComponent),
       },
       {
+        path: 'work/:eventId/:locationId',
+        canActivate: [authGuard],
+        loadComponent: () => import('./features/operations/location-pos.component').then((m) => m.LocationPosComponent),
+      },
+      {
         path: 'events/new',
         canActivate: [authGuard],
         loadComponent: () =>

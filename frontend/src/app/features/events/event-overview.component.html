@@ -66,6 +66,15 @@
       </div></mat-card
     >
   </section>
+  <mat-card class="incident-summary" *ngIf="item.incidents as incidents">
+    <div class="incident-summary-head"><div><p class="eyebrow">SEGUIMIENTO DEL EQUIPO</p><h2>Incidencias abiertas</h2></div><span>{{ incidents.length }} pendientes</span><a mat-stroked-button [routerLink]="['../incidents']">Ver avisos</a></div>
+    <div class="incident-summary-row" *ngFor="let incident of incidents | slice:0:5">
+      <mat-icon [class.urgent]="incident.priority === 'URGENT'">{{ incident.priority === 'URGENT' ? 'error' : 'report_problem' }}</mat-icon>
+      <div><strong>{{ incident.title }}</strong><small>{{ incident.location?.name || 'Sin ubicación' }} · {{ incident.status === 'IN_PROGRESS' ? 'En curso' : 'Abierta' }}</small></div>
+      <span class="incident-priority">{{ incident.priority === 'URGENT' ? 'Urgente' : incident.priority === 'HIGH' ? 'Alta' : 'Normal' }}</span>
+    </div>
+    <p class="empty" *ngIf="!incidents.length">No hay incidencias abiertas.</p>
+  </mat-card>
   <section class="quick">
     <a mat-stroked-button [routerLink]="['../movements/new']"
       ><mat-icon>local_shipping</mat-icon> Entregar / recoger vasos</a

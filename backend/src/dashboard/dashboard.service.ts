@@ -350,7 +350,7 @@ export class DashboardService {
             eventId,
             status: { in: [IncidentStatus.OPEN, IncidentStatus.IN_PROGRESS] },
           },
-          select: { id: true, title: true, status: true, locationId: true },
+          select: { id: true, title: true, status: true, priority: true, location: { select: { name: true } } },
         }),
         this.prisma.deliveryNote.count({
           where: { companyId: user.companyId, eventId },

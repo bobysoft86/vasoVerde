@@ -12,7 +12,7 @@
     <a
       class="location"
       *ngFor="let location of locations()"
-      [routerLink]="['/events', eventId, 'operate', location.id]"
+      [routerLink]="['/work', eventId, location.id]"
       ><div class="icon" [class.bar]="location.type === 'BAR'">
         <mat-icon>{{ location.type === 'BAR' ? 'local_bar' : 'storefront' }}</mat-icon>
       </div>
