@@ -322,6 +322,13 @@
           <mat-option *ngFor="let location of eventLocations()" [value]="location.id">{{ location.name }}</mat-option>
         </mat-select>
       </mat-form-field>
+
+      <mat-form-field appearance="outline" *ngIf="adjustment">
+        <mat-label>Ubicación donde ocurrió</mat-label>
+        <mat-select [(ngModel)]="adjustmentLocationId">
+          <mat-option *ngFor="let area of data()?.locations" [value]="area.id">{{ area.name }}</mat-option>
+        </mat-select>
+      </mat-form-field>
     </div>
 
     <div class="route-summary">
