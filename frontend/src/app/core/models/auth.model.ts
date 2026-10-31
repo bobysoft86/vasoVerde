@@ -4,6 +4,7 @@ export interface AuthUser {
   email: string;
   active: boolean;
   globalRole: 'SUPER_ADMIN' | 'ADMIN' | 'USER' | 'CLIENT' | 'WORKER' | 'RESPONSIBLE';
+  mustChangePassword?: boolean;
   company?: { id: string; name: string };
   events?: Array<{ eventId: string; eventName: string; role: string }>;
 }

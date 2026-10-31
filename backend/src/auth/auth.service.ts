@@ -11,7 +11,7 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 
 type TokenResponse = {
   accessToken: string;
-  user: { id: string; name: string; email: string; globalRole: GlobalRole };
+  user: { id: string; name: string; email: string; globalRole: GlobalRole; mustChangePassword: boolean };
 };
 
 @Injectable()
@@ -28,6 +28,7 @@ export class AuthService {
       name: user.name,
       email: user.email,
       globalRole: user.globalRole,
+      mustChangePassword: user.mustChangePassword,
     };
   }
   private async accessToken(user: User) {
@@ -184,6 +185,7 @@ export class AuthService {
       email: user.email,
       active: user.active,
       globalRole: user.globalRole,
+      mustChangePassword: user.mustChangePassword,
       company: { id: user.company.id, name: user.company.name },
       events: user.eventMemberships.map((m) => ({
         eventId: m.eventId,
@@ -200,7 +202,7 @@ export class AuthService {
       throw new UnauthorizedException('Current password is invalid');
     await this.prisma.user.update({
       where: { id: userId },
-      data: { passwordHash: await argon2.hash(dto.newPassword) },
+      data: { passwordHash: await argon2.hash(dto.newPassword), mustChangePassword: false },
     });
     await this.logoutAll(userId);
   }

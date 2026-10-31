@@ -26,10 +26,44 @@
   >
   <div *ngIf="selected() as detail">
     <h3>{{ detail.location.name }}</h3>
+    <p class="threshold-help">Mínimo de stock limpio por tipo de vaso. El valor predeterminado es {{ defaultMinimum() }}.</p>
     <div class="detail-row" *ngFor="let item of detail.items">
-      <span>{{ item.cupTypeName }} · {{ item.condition }}</span
-      ><strong>{{ item.quantity }}</strong>
+      <span>{{ item.cupTypeName }} · {{ item.condition }}
+        <small *ngIf="item.condition === 'CLEAN'" [class.low-stock]="item.quantity < minimum(detail.location.id, item.cupTypeId)">Mínimo {{ minimum(detail.location.id, item.cupTypeId) }}</small>
+      </span>
+      <strong>{{ item.quantity }}</strong>
     </div>
+    <p role="status" *ngIf="notice()">{{ notice() }}</p>
     <p class="empty" *ngIf="!detail.items.length">Sin stock registrado.</p>
+    <section class="physical-count">
+      <h3>Recuento físico</h3>
+      <p>Introduce las cantidades contadas. El sistema compara cada una con el saldo registrado y conserva el resultado como control; no modifica el stock automáticamente.</p>
+      <div class="count-row count-heading"><span>Vaso / estado</span><span>Registrado</span><span>Recuento físico</span></div>
+      <div class="count-row" *ngFor="let cup of cups()"><ng-container *ngFor="let condition of conditions">
+        <span>{{ cup.name }} · {{ condition === 'CLEAN' ? 'Limpio' : condition === 'DIRTY' ? 'Sucio' : 'Dañado' }}</span>
+        <strong>{{ expected(cup.id, condition) | number }}</strong>
+        <input type="number" min="0" step="1" [attr.aria-label]="'Recuento de ' + cup.name + ' ' + condition" [value]="countDraft()[countKey(cup.id, condition)]" (input)="setCount(countKey(cup.id, condition), $any($event.target).value)" />
+      </ng-container></div>
+      <label class="count-notes">Notas del recuento <input [(ngModel)]="countNotes" maxlength="500" /></label>
+      <button mat-flat-button color="primary" type="button" [disabled]="savingCount() || !cups().length" (click)="submitCount()">{{ savingCount() ? 'Guardando…' : 'Guardar recuento y diferencias' }}</button>
+    </section>
+    <section class="threshold-config" *ngIf="isManager()">
+      <h3>Mínimos de stock limpio</h3>
+      <p>Configura el aviso para esta ubicación y cada tipo de vaso. Un valor 0 desactiva el aviso.</p>
+      <div class="threshold-row" *ngFor="let cup of cups()">
+        <span>{{ cup.name }} <small>{{ cup.code }}</small></span>
+        <input type="number" min="0" step="1" [attr.aria-label]="'Mínimo de stock limpio de ' + cup.name" [value]="thresholdDraft()[cup.id] || minimum(detail.location.id, cup.id)" (input)="setThresholdDraft(cup.id, $any($event.target).value)" />
+        <button mat-button type="button" [disabled]="savingThreshold()" (click)="saveThreshold(cup.id)">Guardar</button>
+      </div>
+    </section>
   </div></mat-card
 >
+<mat-card class="count-history" *ngIf="countHistory().length">
+  <h3>Últimos recuentos</h3>
+  <article *ngFor="let count of countHistory()">
+    <div><strong>{{ count.location.name }}</strong><small>{{ count.createdAt | date:'short' }} · {{ count.createdBy.name }}</small></div>
+    <div class="discrepancies" *ngFor="let line of count.lines" [class.has-difference]="line.difference !== 0">
+      {{ line.cupType.name }} · {{ line.condition === 'CLEAN' ? 'Limpio' : line.condition === 'DIRTY' ? 'Sucio' : 'Dañado' }}: registrado {{ line.expected }}, contado {{ line.counted }}, diferencia {{ line.difference > 0 ? '+' : '' }}{{ line.difference }}
+    </div>
+  </article>
+</mat-card>

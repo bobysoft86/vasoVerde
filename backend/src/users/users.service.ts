@@ -68,6 +68,7 @@ export class UsersService {
         name: dto.name.trim(),
         email,
         passwordHash: await argon2.hash(dto.password),
+        mustChangePassword: true,
         phone: dto.phone,
         globalRole: dto.globalRole ?? GlobalRole.USER,
       },
@@ -106,7 +107,7 @@ export class UsersService {
     await this.findOne(companyId, id);
     await this.prisma.user.update({
       where: { id },
-      data: { passwordHash: await argon2.hash(dto.password) },
+      data: { passwordHash: await argon2.hash(dto.password), mustChangePassword: true },
     });
     await this.prisma.refreshToken.updateMany({
       where: { userId: id, revokedAt: null },

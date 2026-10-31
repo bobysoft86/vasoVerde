@@ -40,7 +40,7 @@ export class LoginComponent {
     this.auth.login(value.email, value.password).subscribe({
       next: (response) =>
         void this.router.navigateByUrl(
-          ['ADMIN', 'SUPER_ADMIN'].includes(response.user.globalRole) ? '/dashboard' : '/portal',
+          response.user.mustChangePassword ? '/change-password' : ['ADMIN', 'SUPER_ADMIN'].includes(response.user.globalRole) ? '/dashboard' : '/portal',
         ),
       error: () => {
         this.error.set('No se ha podido iniciar sesión. Revisa tus credenciales.');

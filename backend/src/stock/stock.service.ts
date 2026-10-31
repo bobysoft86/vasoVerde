@@ -19,6 +19,7 @@ import { EventsService } from '../events/events.service';
 import { AuthUser } from '../common/types/auth-request';
 import { CreateStockMovementDto } from './dto/create-stock-movement.dto';
 import { CloseLocationDto } from './dto/close-location.dto';
+import { CreateStockCountDto } from './dto/create-stock-count.dto';
 import { DeliveryNotesService } from '../delivery-notes/delivery-notes.service';
 import { LocationsService } from '../locations/locations.service';
 import { balanceFor, reserveStock } from './stock-ledger';
@@ -131,6 +132,45 @@ export class StockService {
     return eligible.filter((l) =>
       assignments.some((a) => a.locationId === l.id),
     );
+  }
+
+  async thresholds(user: AuthUser, eventId: string) {
+    await this.events.assertAccess(user, eventId);
+    const items = await this.prisma.stockThreshold.findMany({
+      where: { companyId: user.companyId, eventId },
+      include: {
+        location: { select: { id: true, name: true } },
+        cupType: { select: { id: true, name: true, code: true } },
+      },
+      orderBy: [{ location: { name: 'asc' } }, { cupType: { name: 'asc' } }],
+    });
+    return { defaultMinimum: Number(process.env.LOW_STOCK_THRESHOLD ?? 100), items };
+  }
+
+  async setThreshold(user: AuthUser, eventId: string, locationId: string, cupTypeId: string, minimum: number) {
+    await this.events.assertAccess(user, eventId);
+    const isAdmin = user.globalRole === GlobalRole.ADMIN || user.globalRole === GlobalRole.SUPER_ADMIN;
+    const member = isAdmin ? null : await this.prisma.eventUser.findUnique({
+      where: { eventId_userId: { eventId, userId: user.sub } }, select: { role: true },
+    });
+    if (!isAdmin && member?.role !== EventRole.EVENT_MANAGER)
+      throw new ForbiddenException('Solo responsables pueden configurar mínimos de stock');
+    if (!Number.isInteger(minimum) || minimum < 0)
+      throw new BadRequestException('El mínimo debe ser un número entero igual o mayor que cero');
+    const [location, cup] = await Promise.all([
+      this.prisma.location.findFirst({ where: { id: locationId, companyId: user.companyId, eventId, active: true, deletedAt: null } }),
+      this.prisma.cupType.findFirst({ where: { id: cupTypeId, companyId: user.companyId, active: true, deletedAt: null } }),
+    ]);
+    if (!location || !cup) throw new NotFoundException('Ubicación o tipo de vaso no encontrado');
+    return this.prisma.$transaction(async (tx) => {
+      const threshold = await tx.stockThreshold.upsert({
+        where: { locationId_cupTypeId: { locationId, cupTypeId } },
+        create: { companyId: user.companyId, eventId, locationId, cupTypeId, minimum },
+        update: { minimum },
+      });
+      await tx.auditLog.create({ data: { companyId: user.companyId, eventId, userId: user.sub, action: 'STOCK_THRESHOLD_UPDATED', entityType: 'StockThreshold', entityId: threshold.id, metadata: { locationId, cupTypeId, minimum } } });
+      return threshold;
+    });
   }
 
   async warehouseMovement(
@@ -743,6 +783,49 @@ export class StockService {
       location: { id: location.id, name: location.name, type: location.type },
       items: await this.balanceItems(balance),
     };
+  }
+
+  async recentCounts(user: AuthUser, eventId: string) {
+    await this.events.assertAccess(user, eventId);
+    return this.prisma.stockCount.findMany({
+      where: { companyId: user.companyId, eventId },
+      include: { location: { select: { id: true, name: true } }, createdBy: { select: { name: true } }, lines: { include: { cupType: { select: { name: true, code: true } } } } },
+      orderBy: { createdAt: 'desc' }, take: 30,
+    });
+  }
+
+  async createCount(user: AuthUser, eventId: string, locationId: string, dto: CreateStockCountDto) {
+    await this.events.assertAccess(user, eventId);
+    const location = await this.prisma.location.findFirst({ where: { id: locationId, companyId: user.companyId, eventId, active: true, deletedAt: null } });
+    if (!location) throw new NotFoundException('Ubicación no encontrada');
+    const admin = user.globalRole === GlobalRole.ADMIN || user.globalRole === GlobalRole.SUPER_ADMIN;
+    const membership = admin ? null : await this.prisma.eventUser.findUnique({ where: { eventId_userId: { eventId, userId: user.sub } }, select: { role: true } });
+    const assignment = admin || membership?.role === EventRole.EVENT_MANAGER ? true : !!await this.prisma.locationUserAssignment.findFirst({ where: { companyId: user.companyId, eventId, locationId, userId: user.sub, active: true, role: { in: ['WORKER', 'RESPONSIBLE'] } } });
+    if (!assignment) throw new ForbiddenException('Necesitas estar asignado a la ubicación para registrar el recuento');
+    const keys = new Set<string>();
+    const cups = await this.prisma.cupType.findMany({ where: { id: { in: dto.lines.map((line) => line.cupTypeId) }, companyId: user.companyId } });
+    if (cups.length !== new Set(dto.lines.map((line) => line.cupTypeId)).size) throw new BadRequestException('Hay tipos de vaso que no pertenecen a esta empresa');
+    assertCupOwnership(cups, [eventId]);
+    for (const line of dto.lines) {
+      const key = `${line.cupTypeId}:${line.condition}`;
+      if (keys.has(key)) throw new BadRequestException('No repitas el mismo tipo y estado en el recuento');
+      keys.add(key);
+    }
+    return this.prisma.$transaction(async (tx) => {
+      await this.lockEvent(tx, user, eventId);
+      await tx.$queryRaw(Prisma.sql`SELECT id FROM Location WHERE id = ${locationId} FOR UPDATE`);
+      const balance = this.balanceFor(await this.movementsForLocation(tx, eventId, locationId), locationId);
+      const lines = dto.lines.map((line) => {
+        const expected = Math.max(0, balance.get(`${line.cupTypeId}:${line.condition}`) ?? 0);
+        return { ...line, expected, difference: line.counted - expected };
+      });
+      const count = await tx.stockCount.create({ data: {
+        companyId: user.companyId, eventId, locationId, createdById: user.sub, notes: dto.notes?.trim() || null,
+        lines: { create: lines },
+      }, include: { location: { select: { id: true, name: true } }, createdBy: { select: { name: true } }, lines: { include: { cupType: { select: { name: true, code: true } } } } } });
+      await tx.auditLog.create({ data: { companyId: user.companyId, eventId, userId: user.sub, action: 'STOCK_COUNT_RECORDED', entityType: 'StockCount', entityId: count.id, metadata: { locationId, discrepancies: lines.filter((line) => line.difference !== 0).length } } });
+      return count;
+    });
   }
 
   async centralOverview(user: AuthUser) {

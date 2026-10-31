@@ -1,4 +1,5 @@
 import { HttpClient } from '@angular/common/http';
+import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -9,14 +10,19 @@ interface ClosureChecklist {
   status: string;
   canManage: boolean;
   ready: boolean;
-  blockers: { pendingLocations: number; openCashSessions: number; unsettledCashSessions: number; unsignedNotes: number; dirtyStock: number };
+  blockers: { pendingLocations: number; openCashSessions: number; unsettledCashSessions: number; unsignedNotes: number; dirtyStock: number; pendingBarSettlements: number };
   pendingLocations: { id: string; name: string; type: string }[];
   unsignedNotes: { id: string; number: string }[];
+  openIncidents: { id: string; title: string; priority: string; status: string; assignedTo: { name: string } | null }[];
+  openCashSessions: { id: string; locationId: string; location: { name: string } }[];
+  unsettledCashSessions: { id: string; locationId: string; location: { name: string }; closingAmount: number }[];
+  dirtyStock: { locationId: string; cupTypeId: string; quantity: number }[];
+  pendingBarSettlements: { id: string; name: string }[];
 }
 
 @Component({
   selector: 'app-event-close',
-  imports: [RouterLink, MatButtonModule],
+  imports: [CommonModule, RouterLink, MatButtonModule],
   templateUrl: './event-close.component.html',
   styleUrl: './event-close.component.scss',
 })

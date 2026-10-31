@@ -16,13 +16,27 @@ export class DashboardService {
     if (dateTo) params = params.set('dateTo', dateTo);
     return this.http.get<EventDashboard>(`${this.url}/events/${eventId}/dashboard`, { params });
   }
-  downloadStockCsv(eventId: string) {
+  cashReport(eventId: string, dateFrom?: string, dateTo?: string) {
+    let params = new HttpParams();
+    if (dateFrom) params = params.set('dateFrom', dateFrom);
+    if (dateTo) params = params.set('dateTo', dateTo);
+    return this.http.get<any>(`${this.url}/events/${eventId}/reports/cash`, { params });
+  }
+  downloadStockCsv(eventId: string, dateFrom?: string, dateTo?: string) {
+    let params = new HttpParams();
+    if (dateFrom) params = params.set('dateFrom', dateFrom);
+    if (dateTo) params = params.set('dateTo', dateTo);
     return this.http.get(`${this.url}/events/${eventId}/reports/stock.csv`, {
+      params,
       responseType: 'blob',
     });
   }
-  downloadCashCsv(eventId: string) {
+  downloadCashCsv(eventId: string, dateFrom?: string, dateTo?: string) {
+    let params = new HttpParams();
+    if (dateFrom) params = params.set('dateFrom', dateFrom);
+    if (dateTo) params = params.set('dateTo', dateTo);
     return this.http.get(`${this.url}/events/${eventId}/reports/cash.csv`, {
+      params,
       responseType: 'blob',
     });
   }

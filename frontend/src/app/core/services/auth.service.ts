@@ -52,6 +52,9 @@ export class AuthService {
       .get<AuthUser>(`${environment.apiUrl}/auth/me`)
       .pipe(tap((user) => this.currentUser.set(user)));
   }
+  changePassword(currentPassword: string, newPassword: string) {
+    return this.http.patch(`${environment.apiUrl}/auth/change-password`, { currentPassword, newPassword });
+  }
   logout() {
     return this.http.post(`${environment.apiUrl}/auth/logout`, {}, { withCredentials: true }).pipe(
       catchError(() => of(null)),

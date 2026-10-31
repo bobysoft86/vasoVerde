@@ -43,3 +43,9 @@ El dashboard de evento utiliza un endpoint agregado y limita actividad/albaranes
 ## Caja operativa
 
 Cada `CashSession` pertenece a una ubicación del evento y registra el fondo inicial, movimientos, arqueo final y diferencia. `REFUND` representa específicamente el euro devuelto por un vaso; no se mezcla con gastos ni retiradas. Las sesiones se gestionan desde `/events/:eventId/cash`.
+
+Los informes de caja aceptan `dateFrom` y `dateTo` en formato `YYYY-MM-DD`. El panel muestra recaudación, gastos, retiradas, saldo neto, diferencias y cajas abiertas/cerradas para el período; el CSV usa el mismo rango. El informe de stock exportado representa el saldo actual del evento.
+
+Los mínimos de stock limpio se configuran por tipo de vaso y ubicación. Si no hay un mínimo específico, se conserva `LOW_STOCK_THRESHOLD` (por defecto 100). Un recuento físico guarda el saldo esperado, la cantidad contada y la diferencia sin aplicar un ajuste automático al inventario; las diferencias quedan disponibles para revisión y posterior regularización.
+
+El checklist de cierre también lista incidencias abiertas y en curso para revisión del responsable. Son un recordatorio y no bloquean por sí mismas la finalización.

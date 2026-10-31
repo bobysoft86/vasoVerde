@@ -102,6 +102,18 @@ export class EventsService {
       items: import('../models/event.model').StockItem[];
     }>(`${this.url}/events/${eventId}/locations/${locationId}/stock`);
   }
+  stockThresholds(eventId: string) {
+    return this.http.get<{ defaultMinimum: number; items: Array<{ locationId: string; cupTypeId: string; minimum: number }> }>(`${this.url}/events/${eventId}/stock-thresholds`);
+  }
+  setStockThreshold(eventId: string, locationId: string, cupTypeId: string, minimum: number) {
+    return this.http.put(`${this.url}/events/${eventId}/locations/${locationId}/stock-thresholds/${cupTypeId}`, { minimum });
+  }
+  stockCounts(eventId: string) {
+    return this.http.get<Array<any>>(`${this.url}/events/${eventId}/stock-counts`);
+  }
+  createStockCount(eventId: string, locationId: string, data: unknown) {
+    return this.http.post<any>(`${this.url}/events/${eventId}/locations/${locationId}/stock-counts`, data);
+  }
   movements(eventId: string, type?: StockMovementType) {
     return this.http.get<{ items: StockMovement[]; total: number }>(
       `${this.url}/events/${eventId}/stock-movements`,

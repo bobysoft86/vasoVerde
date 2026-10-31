@@ -76,6 +76,35 @@ async function seedIncidentShowcase(companyId: string) {
   }
 }
 
+async function seedStockControls(companyId: string) {
+  const [event, cup, admin] = await Promise.all([
+    prisma.event.findUnique({ where: { companyId_code: { companyId, code: 'FESTIVAL-2026-001' } } }),
+    prisma.cupType.findUnique({ where: { companyId_code: { companyId, code: 'CUP-33CL' } } }),
+    prisma.user.findUnique({ where: { companyId_email: { companyId, email: 'admin@ecocups.demo' } } }),
+  ]);
+  if (!event || !cup || !admin) return;
+  const bar = await prisma.location.findFirst({ where: { companyId, eventId: event.id, type: LocationType.BAR, name: 'Barra Norte 1' } });
+  if (!bar) return;
+  await prisma.stockThreshold.upsert({
+    where: { locationId_cupTypeId: { locationId: bar.id, cupTypeId: cup.id } },
+    update: {},
+    create: { companyId, eventId: event.id, locationId: bar.id, cupTypeId: cup.id, minimum: 600 },
+  });
+  const countId = 'seed-demo-stock-count-bar-north';
+  if (await prisma.stockCount.findUnique({ where: { id: countId } })) return;
+  const history = await prisma.stockMovement.findMany({
+    where: { companyId, status: StockMovementStatus.POSTED }, include: { items: true },
+  });
+  const expected = Math.max(0, seedBalanceFor(history, bar.id).get(`${cup.id}:${StockCondition.CLEAN}`) ?? 0);
+  await prisma.stockCount.create({
+    data: {
+      id: countId, companyId, eventId: event.id, locationId: bar.id, createdById: admin.id,
+      notes: 'Recuento de ejemplo para revisar una diferencia física.',
+      lines: { create: [{ cupTypeId: cup.id, condition: StockCondition.CLEAN, expected, counted: Math.max(0, expected - 10), difference: Math.max(0, expected - 10) - expected }] },
+    },
+  });
+}
+
 // Keep the seed executable in the production runtime image, which contains
 // compiled dist/ but intentionally does not include backend/src/.
 function seedBalanceFor(movements: Array<{
@@ -132,7 +161,8 @@ async function main() {
     ]);
     if (operations.some((count) => count > 0)) {
       await seedIncidentShowcase(existingCompany.id);
-      console.log('Operaciones demo existentes conservadas; avisos e incidencias de ejemplo añadidos si faltaban.');
+      await seedStockControls(existingCompany.id);
+      console.log('Operaciones demo existentes conservadas; avisos, incidencias y controles de stock de ejemplo añadidos si faltaban.');
       return;
     }
   }
@@ -332,6 +362,7 @@ async function main() {
   });
 
   await seedIncidentShowcase(company.id);
+  await seedStockControls(company.id);
 
   const repeatEvent = await prisma.event.upsert({
     where: { companyId_code: { companyId: company.id, code: 'FESTIVAL-2027-001' } },

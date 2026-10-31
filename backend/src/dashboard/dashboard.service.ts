@@ -1,5 +1,5 @@
 import { balanceFor } from '../stock/stock-ledger';
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import {
   CashMovementType,
   DeliveryNoteStatus,
@@ -242,9 +242,13 @@ export class DashboardService {
     };
   }
   private range(query: Record<string, string | undefined>) {
+    const from = query.dateFrom ? new Date(`${query.dateFrom}T00:00:00.000Z`) : undefined;
+    const to = query.dateTo ? new Date(`${query.dateTo}T23:59:59.999Z`) : undefined;
+    if ((from && Number.isNaN(from.getTime())) || (to && Number.isNaN(to.getTime())) || (from && to && from > to))
+      throw new BadRequestException('El rango de fechas no es válido');
     return {
-      from: query.dateFrom ? new Date(query.dateFrom) : undefined,
-      to: query.dateTo ? new Date(`${query.dateTo}T23:59:59.999Z`) : undefined,
+      from,
+      to,
     };
   }
 
@@ -320,7 +324,7 @@ export class DashboardService {
     query: Record<string, string | undefined> = {},
   ) {
     const event = await this.events.assertAccess(user, eventId);
-    const [locations, movements, notes, incidents, noteCount] =
+    const [locations, movements, notes, incidents, noteCount, thresholds] =
       await Promise.all([
         this.prisma.location.findMany({
           where: { companyId: user.companyId, eventId, deletedAt: null },
@@ -351,6 +355,10 @@ export class DashboardService {
         this.prisma.deliveryNote.count({
           where: { companyId: user.companyId, eventId },
         }),
+        this.prisma.stockThreshold.findMany({
+          where: { companyId: user.companyId, eventId },
+          include: { cupType: { select: { id: true, name: true } } },
+        }),
       ]);
     const stock = this.stockSnapshot(locations, movements);
     const losses = movements
@@ -361,7 +369,7 @@ export class DashboardService {
       .filter((movement) => movement.type === StockMovementType.BREAKAGE)
       .flatMap((movement) => movement.items)
       .reduce((sum, item) => sum + item.quantity, 0);
-    const alerts = this.alertsFromStock(stock, notes);
+    const alerts = this.alertsFromStock(stock, notes, thresholds);
     const recentActivity = [
       ...movements
         .slice(-10)
@@ -452,25 +460,30 @@ export class DashboardService {
       status: DeliveryNoteStatus;
       signatures: Array<{ type: string }>;
     }>,
+    thresholds: Array<{ locationId: string; cupTypeId: string; minimum: number; cupType: { name: string } }>,
   ) {
     const threshold = Number(process.env.LOW_STOCK_THRESHOLD ?? 100);
-    const alerts = stock.byLocation.flatMap((row) =>
-      row.items
-        .filter(
-          (item) =>
-            item.condition === 'CLEAN' &&
-            item.quantity > 0 &&
-            item.quantity < threshold,
-        )
-        .map((item) => ({
+    const alerts: Array<{ type: string; severity: string; title: string; message: string; entityType: string; entityId: string; cupTypeId?: string }> = stock.byLocation.flatMap((row) => {
+      const cups = new Map(row.items.filter((item) => item.condition === 'CLEAN').map((item) => [item.cupTypeId, item]));
+      const configured = thresholds.filter((item) => item.locationId === row.location.id);
+      const values = configured.map((item) => ({
+        name: item.cupType.name,
+        cupTypeId: item.cupTypeId,
+        quantity: cups.get(item.cupTypeId)?.quantity ?? 0,
+        minimum: item.minimum,
+      }));
+      for (const item of row.items.filter((item) => item.condition === 'CLEAN' && !configured.some((value) => value.locationId === row.location.id && value.cupTypeId === item.cupTypeId)))
+        values.push({ name: item.cupTypeName, cupTypeId: item.cupTypeId, quantity: item.quantity, minimum: threshold });
+      return values.filter((item) => item.minimum > 0 && item.quantity < item.minimum).map((item) => ({
           type: 'LOW_STOCK',
-          severity: item.quantity < threshold / 2 ? 'CRITICAL' : 'WARNING',
+          severity: item.quantity < item.minimum / 2 ? 'CRITICAL' : 'WARNING',
           title: 'Stock bajo',
-          message: `${row.location.name} tiene ${item.quantity} ${item.cupTypeName} limpios.`,
+          message: `${row.location.name} tiene ${item.quantity} ${item.name} limpios; mínimo configurado: ${item.minimum}.`,
           entityType: 'LOCATION',
           entityId: row.location.id,
-        })),
-    );
+          cupTypeId: item.cupTypeId,
+        }));
+    });
     alerts.push(
       ...notes
         .filter((note) => note.status === DeliveryNoteStatus.PENDING_SIGNATURE)

@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   Post,
+  Put,
   Query,
   Req,
   UseGuards,
@@ -15,6 +16,8 @@ import { EventAccessGuard } from '../common/guards/event-access.guard';
 import type { AuthenticatedRequest } from '../common/types/auth-request';
 import { CreateStockMovementDto } from './dto/create-stock-movement.dto';
 import { CloseLocationDto } from './dto/close-location.dto';
+import { SetStockThresholdDto } from './dto/set-stock-threshold.dto';
+import { CreateStockCountDto } from './dto/create-stock-count.dto';
 import { StockService } from './stock.service';
 
 @ApiTags('stock')
@@ -49,6 +52,29 @@ export class StockController {
     @Param('locationId') locationId: string,
   ) {
     return this.stock.stockAtLocation(req.user, eventId, locationId);
+  }
+  @Get('stock-thresholds') thresholds(@Req() req: AuthenticatedRequest, @Param('eventId') eventId: string) {
+    return this.stock.thresholds(req.user, eventId);
+  }
+  @Put('locations/:locationId/stock-thresholds/:cupTypeId') setThreshold(
+    @Req() req: AuthenticatedRequest,
+    @Param('eventId') eventId: string,
+    @Param('locationId') locationId: string,
+    @Param('cupTypeId') cupTypeId: string,
+    @Body() body: SetStockThresholdDto,
+  ) {
+    return this.stock.setThreshold(req.user, eventId, locationId, cupTypeId, body.minimum);
+  }
+  @Get('stock-counts') recentCounts(@Req() req: AuthenticatedRequest, @Param('eventId') eventId: string) {
+    return this.stock.recentCounts(req.user, eventId);
+  }
+  @Post('locations/:locationId/stock-counts') createCount(
+    @Req() req: AuthenticatedRequest,
+    @Param('eventId') eventId: string,
+    @Param('locationId') locationId: string,
+    @Body() dto: CreateStockCountDto,
+  ) {
+    return this.stock.createCount(req.user, eventId, locationId, dto);
   }
   @Get('stock-movements') list(
     @Req() req: AuthenticatedRequest,

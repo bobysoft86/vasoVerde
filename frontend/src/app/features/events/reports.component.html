@@ -1,18 +1,39 @@
 <a class="back" [routerLink]="['..', 'overview']">← Dashboard del evento</a>
 <h2>Informes</h2>
 <p class="intro">Consulta datos operativos y exporta CSV compatible con Excel y LibreOffice.</p>
+<mat-card class="filters">
+  <h3>Período para informes de caja</h3>
+  <ng-container *ngIf="canSeeFinancial">
+    <label>Desde <input type="date" [(ngModel)]="dateFrom" /></label>
+    <label>Hasta <input type="date" [(ngModel)]="dateTo" /></label>
+    <button mat-flat-button color="primary" (click)="loadCash()" [disabled]="loading">{{ loading ? 'Cargando…' : 'Aplicar período' }}</button>
+    <button mat-button (click)="dateFrom=''; dateTo=''; loadCash()">Todo el evento</button>
+  </ng-container>
+  <p *ngIf="!canSeeFinancial">El resumen económico solo está disponible para responsables y administración.</p>
+</mat-card>
+<mat-card class="cash-summary" *ngIf="canSeeFinancial && cash as totals">
+  <h3>Resumen de caja <small *ngIf="dateFrom || dateTo">{{ dateFrom || 'Inicio' }} – {{ dateTo || 'Hoy' }}</small></h3>
+  <div class="cash-grid">
+    <div><span>Recaudación</span><strong>{{ totals.collections | currency:'EUR':'symbol':'1.2-2':'es-ES' }}</strong></div>
+    <div><span>Gastos</span><strong>{{ totals.expenses | currency:'EUR':'symbol':'1.2-2':'es-ES' }}</strong></div>
+    <div><span>Retiradas</span><strong>{{ totals.withdrawals | currency:'EUR':'symbol':'1.2-2':'es-ES' }}</strong></div>
+    <div><span>Saldo neto</span><strong>{{ totals.balance | currency:'EUR':'symbol':'1.2-2':'es-ES' }}</strong></div>
+    <div><span>Diferencias de arqueo</span><strong>{{ totals.differences | currency:'EUR':'symbol':'1.2-2':'es-ES' }}</strong></div>
+    <div><span>Cajas abiertas / cerradas</span><strong>{{ totals.sessions.open }} / {{ totals.sessions.closed }}</strong></div>
+  </div>
+</mat-card>
 <div class="cards">
   <mat-card
     ><mat-icon>inventory_2</mat-icon>
     <h3>Informe de stock</h3>
-    <p>Stock por tipo de vaso, condición y ubicación.</p>
+    <p>Stock por tipo de vaso y condición. El período delimita movimientos registrados.</p>
     <button mat-flat-button color="primary" (click)="downloadStock()">
       Exportar stock CSV
     </button></mat-card
-  ><mat-card
+    ><mat-card *ngIf="canSeeFinancial"
     ><mat-icon>payments</mat-icon>
     <h3>Informe económico</h3>
-    <p>Recaudación, gastos, retiradas y ajustes registrados.</p>
+    <p>Recaudación, gastos, retiradas, saldo y diferencias del período.</p>
     <button mat-flat-button color="primary" (click)="downloadCash()">
       Exportar caja CSV
     </button></mat-card

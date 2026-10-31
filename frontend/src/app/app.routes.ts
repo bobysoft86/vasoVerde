@@ -12,6 +12,11 @@ export const routes: Routes = [
       import('./layout/main-layout.component').then((m) => m.MainLayoutComponent),
     children: [
       {
+        path: 'change-password',
+        canActivate: [authGuard],
+        loadComponent: () => import('./features/auth/change-password.component').then((m) => m.ChangePasswordComponent),
+      },
+      {
         path: 'dashboard',
         canActivate: [authGuard],
         loadComponent: () =>

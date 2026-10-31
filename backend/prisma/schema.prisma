@@ -188,6 +188,8 @@ model Company {
   auditLogs           AuditLog[]
   documentSequences   DocumentSequence[]
   barSettlements      BarSettlement[]
+  stockThresholds     StockThreshold[]
+  stockCounts         StockCount[]
 }
 
 model User {
@@ -196,6 +198,7 @@ model User {
   name                  String
   email                 String
   passwordHash          String
+  mustChangePassword    Boolean                  @default(false)
   globalRole            GlobalRole               @default(USER)
   phone                 String?
   active                Boolean                  @default(true)
@@ -214,7 +217,7 @@ model User {
   locationClosures      LocationClosure[]
   createdIncidents      Incident[]               @relation("IncidentCreatedBy")
   assignedIncidents     Incident[]               @relation("IncidentAssignedTo")
-  incidentComments     IncidentComment[]
+  incidentComments      IncidentComment[]
   auditLogs             AuditLog[]
   refreshTokens         RefreshToken[]
   deliveryNoteEmails    DeliveryNoteEmail[]
@@ -222,6 +225,7 @@ model User {
   clientBars            Bar[]                    @relation("BarClient")
   locationAssignments   LocationUserAssignment[]
   createdBarSettlements BarSettlement[]          @relation("BarSettlementCreatedBy")
+  stockCountsCreated    StockCount[]
 
   @@unique([companyId, email])
   @@index([companyId, active])
@@ -270,8 +274,11 @@ model Event {
   incidents           Incident[]
   auditLogs           AuditLog[]
   barSettlements      BarSettlement[]
+  stockThresholds     StockThreshold[]
+  stockCounts         StockCount[]
 
   cupEditions CupType[]
+
   @@unique([companyId, code])
   @@index([companyId, status])
   @@index([companyId, startDate, endDate])
@@ -343,15 +350,17 @@ model CupType {
   externalCode    String?
   ownerEventId    String?
   baseTypeId      String?
-  ownerEvent      Event? @relation(fields: [ownerEventId], references: [id], onDelete: Restrict)
-  baseType        CupType? @relation("CupEditions", fields: [baseTypeId], references: [id], onDelete: Restrict)
-  editions        CupType[] @relation("CupEditions")
+  ownerEvent      Event?              @relation(fields: [ownerEventId], references: [id], onDelete: Restrict)
+  baseType        CupType?            @relation("CupEditions", fields: [baseTypeId], references: [id], onDelete: Restrict)
+  editions        CupType[]           @relation("CupEditions")
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
   deletedAt       DateTime?
   company         Company             @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   movementItems   StockMovementItem[]
   settlementLines BarSettlementLine[]
+  stockThresholds StockThreshold[]
+  stockCountLines StockCountLine[]
 
   @@unique([companyId, code])
   @@index([companyId, active])
@@ -385,6 +394,8 @@ model Location {
   incidents            Incident[]
   barSettlements       BarSettlement[]
   assignments          LocationUserAssignment[]
+  stockThresholds      StockThreshold[]
+  stockCounts          StockCount[]
 
   @@unique([companyId, code])
   @@index([companyId, eventId, type])
@@ -408,6 +419,55 @@ model LocationUserAssignment {
   @@unique([locationId, userId])
   @@index([eventId, locationId, active])
   @@index([userId, active])
+}
+
+model StockThreshold {
+  id         String   @id @default(cuid())
+  companyId  String
+  eventId    String
+  locationId String
+  cupTypeId  String
+  minimum    Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  event      Event    @relation(fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  cupType    CupType  @relation(fields: [cupTypeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([locationId, cupTypeId])
+  @@index([companyId, eventId])
+}
+
+model StockCount {
+  id          String           @id @default(cuid())
+  companyId   String
+  eventId     String
+  locationId  String
+  createdById String
+  notes       String?          @db.Text
+  createdAt   DateTime         @default(now())
+  company     Company          @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  event       Event            @relation(fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  location    Location         @relation(fields: [locationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  createdBy   User             @relation(fields: [createdById], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  lines       StockCountLine[]
+
+  @@index([companyId, eventId, locationId, createdAt])
+}
+
+model StockCountLine {
+  id           String         @id @default(cuid())
+  stockCountId String
+  cupTypeId    String
+  condition    StockCondition
+  expected     Int
+  counted      Int
+  difference   Int
+  stockCount   StockCount     @relation(fields: [stockCountId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  cupType      CupType        @relation(fields: [cupTypeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([stockCountId, cupTypeId, condition])
 }
 
 model StockMovement {
@@ -676,39 +736,39 @@ model CashTransfer {
 }
 
 model Incident {
-  id              String         @id @default(cuid())
-  companyId       String
-  eventId         String?
-  locationId      String?
-  createdByUserId String
+  id               String            @id @default(cuid())
+  companyId        String
+  eventId          String?
+  locationId       String?
+  createdByUserId  String
   assignedToUserId String?
-  kind            IncidentKind   @default(INCIDENT)
-  type            IncidentType
-  priority        IncidentPriority @default(NORMAL)
-  title           String
-  description     String?        @db.Text
-  status          IncidentStatus @default(OPEN)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  company         Company        @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  event           Event?         @relation(fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  location        Location?      @relation(fields: [locationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  createdBy       User           @relation("IncidentCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  assignedTo      User?          @relation("IncidentAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-  comments        IncidentComment[]
+  kind             IncidentKind      @default(INCIDENT)
+  type             IncidentType
+  priority         IncidentPriority  @default(NORMAL)
+  title            String
+  description      String?           @db.Text
+  status           IncidentStatus    @default(OPEN)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  company          Company           @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  event            Event?            @relation(fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  location         Location?         @relation(fields: [locationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  createdBy        User              @relation("IncidentCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  assignedTo       User?             @relation("IncidentAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  comments         IncidentComment[]
 
   @@index([companyId, eventId, status])
   @@index([locationId, createdAt])
 }
 
 model IncidentComment {
-  id        String   @id @default(cuid())
+  id         String   @id @default(cuid())
   incidentId String
-  userId    String
-  message   String   @db.Text
-  createdAt DateTime @default(now())
-  incident  Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  userId     String
+  message    String   @db.Text
+  createdAt  DateTime @default(now())
+  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([incidentId, createdAt])
 }

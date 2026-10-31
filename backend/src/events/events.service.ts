@@ -148,7 +148,7 @@ export class EventsService {
   }
 
   private async closureChecklistFor(tx: Prisma.TransactionClient, companyId: string, eventId: string) {
-    const [pendingLocations, openCashSessions, unsettledCashSessions, unsignedNotes, movements] = await Promise.all([
+    const [pendingLocations, openCashSessions, unsettledCashSessions, unsignedNotes, movements, openIncidents, pendingBarSettlements] = await Promise.all([
       tx.location.findMany({
         where: { companyId, eventId, active: true, deletedAt: null,
           type: { in: ['BAR', 'BOOTH'] }, closures: { none: { companyId, eventId } } },
@@ -170,6 +170,15 @@ export class EventsService {
         where: { companyId, eventId, status: 'POSTED' },
         include: { items: true }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
       }),
+      tx.incident.findMany({
+        where: { companyId, eventId, status: { in: ['OPEN', 'IN_PROGRESS'] } },
+        select: { id: true, title: true, priority: true, status: true, assignedTo: { select: { name: true } } },
+        orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }],
+      }),
+      tx.location.findMany({
+        where: { companyId, eventId, type: 'BAR', closures: { some: { companyId, eventId } }, barSettlements: { none: { status: 'CONFIRMED' } } },
+        select: { id: true, name: true }, orderBy: { name: 'asc' },
+      }),
     ]);
     const locationIds = [...new Set(movements.flatMap((movement) =>
       [movement.sourceLocationId, movement.destinationLocationId].filter((id): id is string => !!id)))];
@@ -184,9 +193,10 @@ export class EventsService {
       unsettledCashSessions: unsettledCashSessions.length,
       unsignedNotes: unsignedNotes.length,
       dirtyStock: dirtyStock.reduce((sum, item) => sum + item.quantity, 0),
+      pendingBarSettlements: pendingBarSettlements.length,
     };
     return { eventId, ready: Object.values(blockers).every((count) => count === 0),
-      blockers, pendingLocations, openCashSessions, unsettledCashSessions, unsignedNotes, dirtyStock };
+      blockers, pendingLocations, openCashSessions, unsettledCashSessions, unsignedNotes, dirtyStock, openIncidents, pendingBarSettlements };
   }
 
   async closureChecklist(user: AuthUser, eventId: string) {
@@ -298,6 +308,7 @@ export class EventsService {
           name: dto.name.trim(),
           email,
           passwordHash,
+          mustChangePassword: true,
           phone: dto.phone?.trim() || undefined,
           globalRole: dto.globalRole ?? GlobalRole.USER,
         },
