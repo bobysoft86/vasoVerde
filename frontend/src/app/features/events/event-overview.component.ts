@@ -21,4 +21,11 @@ export class EventOverviewComponent {
   constructor() {
     this.dashboard.event(this.eventId).subscribe((data) => this.data.set(data));
   }
+  paidPercent(paid: number, due: number) {
+    const total = Math.max(0, paid) + Math.max(0, due);
+    return total ? (Math.max(0, paid) / total) * 100 : 0;
+  }
+  settlementLabel(status: string) {
+    return ({ CONFIRMED: 'Liquidada', PENDING: 'Pendiente', UNSETTLED: 'Por liquidar', IN_PROGRESS: 'En curso' } as Record<string, string>)[status] ?? status;
+  }
 }

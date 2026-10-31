@@ -29,6 +29,25 @@
       <div class="stock-stat dirty-stat"><span>Sucios</span><strong>{{ stockTotal('DIRTY') | number }}</strong><mat-icon>local_laundry_service</mat-icon></div>
       <div class="stock-stat damaged-stat"><span>Dañados</span><strong>{{ stockTotal('DAMAGED') | number }}</strong><mat-icon>warning</mat-icon></div>
     </section>
+    <mat-card class="type-stock-card" *ngIf="data()">
+      <div class="section-heading">
+        <div><p class="eyebrow">DETALLE DE INVENTARIO</p><h2>Stock por tipo de vaso</h2></div>
+        <span>{{ cupTypeStock().length }} tipos</span>
+      </div>
+      <div class="type-stock-scroll">
+        <table class="type-stock-table">
+          <thead><tr><th>Tipo de vaso</th><th>Limpios</th><th>Sucios</th><th>Dañados</th><th>Total</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let cup of cupTypeStock()">
+              <td><span class="cup-name">{{ cup.name }}</span><small *ngIf="cup.code">{{ cup.code }}</small></td>
+              <td>{{ cup.clean | number }}</td><td>{{ cup.dirty | number }}</td><td>{{ cup.damaged | number }}</td><td><strong>{{ cup.total | number }}</strong></td>
+            </tr>
+            <tr class="type-stock-total"><td>Total general</td><td>{{ stockTotal('CLEAN') | number }}</td><td>{{ stockTotal('DIRTY') | number }}</td><td>{{ stockTotal('DAMAGED') | number }}</td><td><strong>{{ stockTotal() | number }}</strong></td></tr>
+          </tbody>
+        </table>
+        <p class="empty" *ngIf="!cupTypeStock().length">No hay tipos de vaso activos ni stock registrado.</p>
+      </div>
+    </mat-card>
     <section class="overview-grid" *ngIf="data() as overview">
       <mat-card class="overview-card location-overview">
         <div class="section-heading"><div><p class="eyebrow">INVENTARIO</p><h2>Stock por ubicación</h2></div><span>{{ overview.locations.length }} zonas</span></div>

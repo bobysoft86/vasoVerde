@@ -9,6 +9,7 @@ import {
 import {
   CashMovementType,
   CashSessionStatus,
+  EventRole,
   EventStatus,
   GlobalRole,
   LocationType,
@@ -770,6 +771,86 @@ export class CashService {
     const existing = await this.prisma.barSettlement.findFirst({ where: { companyId: user.companyId, eventId, locationId, status: { in: ['CONFIRMED', 'PENDING'] } }, select: { id: true, status: true } });
     return { location, closed: !!closure, settlementId: existing?.id ?? null, settlementStatus: existing?.status ?? null, ...result, balanceAmount: Number(result.balanceAmount), prepaidAmount: Number(result.prepaidAmount), missingAmount: Number(result.missingAmount), lines: result.lines.map((line) => ({ ...line, unitPrice: Number(line.unitPrice), missingAmount: Number(line.missingAmount) })) };
   }
+
+  async barSettlementReport(user: AuthUser, eventId: string) {
+    await this.events.assertAccess(user, eventId);
+    if (!this.admin(user)) {
+      const membership = await this.prisma.eventUser.findUnique({
+        where: { eventId_userId: { eventId, userId: user.sub } },
+        select: { role: true },
+      });
+      if (membership?.role !== EventRole.EVENT_MANAGER)
+        throw new ForbiddenException('Financial dashboard permissions required');
+    }
+
+    const [bars, settlements, closures] = await Promise.all([
+      this.prisma.location.findMany({
+        where: { companyId: user.companyId, eventId, type: LocationType.BAR, deletedAt: null },
+        select: { id: true, name: true, active: true },
+        orderBy: { name: 'asc' },
+      }),
+      this.prisma.barSettlement.findMany({
+        where: { companyId: user.companyId, eventId, status: { in: ['CONFIRMED', 'PENDING'] } },
+        include: { cashMovement: { select: { type: true, amount: true } } },
+      }),
+      this.prisma.locationClosure.findMany({ where: { eventId }, select: { locationId: true } }),
+    ]);
+    const settlementByBar = new Map(settlements.map((item) => [item.locationId, item]));
+    const closedBars = new Set(closures.map((item) => item.locationId));
+    const items = await Promise.all(
+      bars.map(async (bar) => {
+        const saved = settlementByBar.get(bar.id);
+        const current = saved ? null : await this.calculateBarSettlement(
+          this.prisma,
+          user.companyId,
+          eventId,
+          bar.id,
+        );
+        const missingAmount = saved ? Number(saved.missingAmount) : current!.missingAmount;
+        const prepaidAmount = saved ? Number(saved.prepaidAmount) : current!.prepaidAmount;
+        const balanceAmount = saved ? Number(saved.balanceAmount) : current!.balanceAmount;
+        const collectedAtSettlement = saved?.cashMovement?.type === CashMovementType.COLLECTION
+          ? Number(saved.cashMovement.amount)
+          : 0;
+        const refundedAtSettlement = saved?.cashMovement?.type === CashMovementType.REFUND
+          ? Number(saved.cashMovement.amount)
+          : 0;
+        const settled = saved?.status === 'CONFIRMED';
+        const dueAmount = settled ? 0 : Math.max(0, balanceAmount);
+        const refundDue = settled ? 0 : Math.max(0, -balanceAmount);
+        return {
+          locationId: bar.id,
+          name: bar.name,
+          active: bar.active,
+          status: saved?.status ?? (closedBars.has(bar.id) ? 'UNSETTLED' : 'IN_PROGRESS'),
+          totalDelivered: saved?.totalDelivered ?? current!.totalDelivered,
+          totalCollected: saved?.totalCollected ?? current!.totalCollected,
+          missingAmount,
+          prepaidAmount,
+          balanceAmount,
+          paidAmount: Math.max(0, prepaidAmount + collectedAtSettlement - refundedAtSettlement),
+          dueAmount,
+          refundDue,
+        };
+      }),
+    );
+    return {
+      totals: items.reduce(
+        (sum, item) => ({
+          missingAmount: sum.missingAmount + item.missingAmount,
+          prepaidAmount: sum.prepaidAmount + item.prepaidAmount,
+          paidAmount: sum.paidAmount + item.paidAmount,
+          dueAmount: sum.dueAmount + item.dueAmount,
+          refundDue: sum.refundDue + item.refundDue,
+          confirmed: sum.confirmed + Number(item.status === 'CONFIRMED'),
+          pending: sum.pending + Number(item.status === 'PENDING' || item.status === 'UNSETTLED'),
+        }),
+        { missingAmount: 0, prepaidAmount: 0, paidAmount: 0, dueAmount: 0, refundDue: 0, confirmed: 0, pending: 0 },
+      ),
+      items,
+    };
+  }
+
   async settleBar(user: AuthUser, eventId: string, dto: ConfirmBarSettlementDto) {
     const result = await this.prisma.$transaction(async (tx) => {
       await this.operator(tx, user, eventId);

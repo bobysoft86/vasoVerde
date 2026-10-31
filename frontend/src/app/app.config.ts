@@ -3,6 +3,8 @@ import {
   provideBrowserGlobalErrorListeners,
   provideZoneChangeDetection,
 } from '@angular/core';
+import { registerLocaleData } from '@angular/common';
+import localeEs from '@angular/common/locales/es';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideServiceWorker } from '@angular/service-worker';
 import { provideRouter } from '@angular/router';
@@ -11,6 +13,8 @@ import { idempotencyInterceptor } from './core/interceptors/idempotency.intercep
 import { environment } from '../environments/environment';
 
 import { routes } from './app.routes';
+
+registerLocaleData(localeEs, 'es-ES');
 
 export const appConfig: ApplicationConfig = {
   providers: [

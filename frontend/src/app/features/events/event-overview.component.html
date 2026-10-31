@@ -14,6 +14,36 @@
       ><small><a [routerLink]="['../delivery-notes']">Ver albaranes</a></small></mat-card
     >
   </section>
+  <section class="finance" *ngIf="item.cash as cash">
+    <header class="finance-heading">
+      <div><p class="eyebrow">CONTROL FINANCIERO</p><h2>Resumen de caja del evento</h2><p>Recaudación y liquidaciones registradas hasta ahora.</p></div>
+      <a mat-stroked-button [routerLink]="['../cash']"><mat-icon>account_balance_wallet</mat-icon>Ver caja</a>
+    </header>
+    <div class="cash-kpis">
+      <div class="cash-stat collected"><span>Recaudación en caja</span><strong>{{ cash.collections | currency:'EUR':'symbol':'1.2-2':'es-ES' }}</strong><small>Incluye cobros de liquidaciones</small></div>
+      <div class="cash-stat balance"><span>Saldo de caja</span><strong>{{ cash.balance | currency:'EUR':'symbol':'1.2-2':'es-ES' }}</strong><small>{{ cash.sessions.open }} abiertas · {{ cash.sessions.closed }} cerradas</small></div>
+      <div class="cash-stat expense"><span>Gastos</span><strong>{{ cash.expenses | currency:'EUR':'symbol':'1.2-2':'es-ES' }}</strong><small>Registrados en el evento</small></div>
+      <div class="cash-stat difference"><span>Diferencias de arqueo</span><strong>{{ cash.differences | currency:'EUR':'symbol':'1.2-2':'es-ES' }}</strong><small>Acumuladas en cierres</small></div>
+    </div>
+    <section class="bar-settlement" *ngIf="item.barSettlements as report">
+      <div class="settlement-heading"><div><h3>Liquidaciones por barra</h3><p>Anticipos recibidos, pagos confirmados y saldos pendientes de cobro o devolución.</p></div><span class="pending-count" *ngIf="report.totals.pending">{{ report.totals.pending }} por revisar</span></div>
+      <div class="settlement-totals">
+        <div><span>Pagado por barras</span><strong>{{ report.totals.paidAmount | currency:'EUR':'symbol':'1.2-2':'es-ES' }}</strong><small>Anticipos + liquidaciones netas</small></div>
+        <div><span>Anticipos en entregas</span><strong>{{ report.totals.prepaidAmount | currency:'EUR':'symbol':'1.2-2':'es-ES' }}</strong><small>Pagados al recibir vasos</small></div>
+        <div><span>Pendiente de cobro</span><strong>{{ report.totals.dueAmount | currency:'EUR':'symbol':'1.2-2':'es-ES' }}</strong><small>Saldo a favor del evento</small></div>
+        <div><span>Pendiente de devolver</span><strong>{{ report.totals.refundDue | currency:'EUR':'symbol':'1.2-2':'es-ES' }}</strong><small>Saldo a favor de las barras</small></div>
+        <div><span>Valor de vasos pendientes</span><strong>{{ report.totals.missingAmount | currency:'EUR':'symbol':'1.2-2':'es-ES' }}</strong><small>{{ report.totals.confirmed }} liquidaciones confirmadas</small></div>
+      </div>
+      <div class="bar-list" *ngIf="report.items.length; else noBars">
+        <article class="bar-row" *ngFor="let bar of report.items">
+          <div class="bar-name"><mat-icon>storefront</mat-icon><div><strong>{{ bar.name }}</strong><small>{{ settlementLabel(bar.status) }} · {{ bar.totalDelivered | number }} vasos entregados · {{ bar.totalCollected | number }} recogidos</small></div></div>
+          <div class="bar-payment"><div><span>Pagado <b>{{ bar.paidAmount | currency:'EUR':'symbol':'1.2-2':'es-ES' }}</b></span><span>Anticipo <b>{{ bar.prepaidAmount | currency:'EUR':'symbol':'1.2-2':'es-ES' }}</b></span><span *ngIf="bar.dueAmount">Debe <b class="due">{{ bar.dueAmount | currency:'EUR':'symbol':'1.2-2':'es-ES' }}</b></span><span *ngIf="bar.refundDue">Devolución <b class="refund">{{ bar.refundDue | currency:'EUR':'symbol':'1.2-2':'es-ES' }}</b></span><span *ngIf="!bar.dueAmount && !bar.refundDue">Sin saldo pendiente</span></div><div class="payment-track"><span [style.width.%]="paidPercent(bar.paidAmount, bar.dueAmount)"></span></div></div>
+        </article>
+      </div>
+      <ng-template #noBars><p class="no-bars">Este evento no tiene barras registradas.</p></ng-template>
+      <p class="finance-note">El importe por liquidar es una estimación para barras aún abiertas; se confirma al cerrar y liquidar la barra.</p>
+    </section>
+  </section>
   <section class="columns">
     <mat-card
       ><h3>Alertas operativas</h3>

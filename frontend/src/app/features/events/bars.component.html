@@ -27,9 +27,11 @@
         ><mat-option [value]="null">Sin cliente</mat-option
         ><mat-option *ngFor="let client of clients()" [value]="client.id"
           >{{ client.name }} · {{ client.email }}</mat-option
-        ></mat-select
+      ></mat-select
       ></mat-form-field
-    ><mat-form-field appearance="outline"
+    ><button mat-stroked-button type="button" (click)="showQuickClient.set(!showQuickClient())"><mat-icon>person_add</mat-icon> Crear cliente</button>
+    <app-quick-user-create *ngIf="showQuickClient()" [eventId]="eventId" [globalRole]="'CLIENT'" [eventRole]="'VIEWER'" (created)="onClientCreated($event)" (cancelled)="showQuickClient.set(false)" />
+    <mat-form-field appearance="outline"
       ><mat-label>Descripción</mat-label
       ><input matInput formControlName="description" /></mat-form-field
     ><button mat-flat-button color="primary" [disabled]="form.invalid">Guardar</button>

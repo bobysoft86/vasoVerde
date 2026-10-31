@@ -3,8 +3,10 @@
     <h2>Usuarios asignados</h2>
     <p>Personas con acceso operativo a este evento.</p>
   </div>
+  <button mat-stroked-button type="button" (click)="showCreate.set(!showCreate())"><mat-icon>person_add</mat-icon> Crear usuario</button>
 </div>
-<mat-card class="form-card" *ngIf="users().length"
+<app-quick-user-create *ngIf="showCreate()" [eventId]="eventId" [globalRole]="'USER'" [eventRole]="form.controls.role.value" (created)="onUserCreated($event)" (cancelled)="showCreate.set(false)" />
+<mat-card class="form-card"
   ><form [formGroup]="form" (ngSubmit)="assign()">
     <mat-form-field appearance="outline"
       ><mat-label>Usuario</mat-label

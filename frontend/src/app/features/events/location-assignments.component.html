@@ -21,6 +21,7 @@
         >{{ user.name }} · {{ user.email }} · {{ user.globalRole }}</mat-option
       ></mat-select
     ></mat-form-field
+  ><button mat-stroked-button type="button" [disabled]="!locationId" (click)="showCreate.set(!showCreate())"><mat-icon>person_add</mat-icon> Crear usuario</button
   ><mat-form-field appearance="outline"
     ><mat-label>Tipo de acceso</mat-label
     ><mat-select [(ngModel)]="role"
@@ -31,7 +32,8 @@
   ><button mat-flat-button color="primary" [disabled]="!locationId || !userId" (click)="assign()">
     Asignar
   </button></mat-card
-><mat-card class="list-card"
+><app-quick-user-create *ngIf="showCreate()" [eventId]="eventId" [globalRole]="role" [eventRole]="eventRoleForLocation()" (created)="onUserCreated($event)" (cancelled)="showCreate.set(false)" />
+<mat-card class="list-card"
   ><h3>{{ selectedLocation()?.name || 'Selecciona una ubicación' }}</h3>
   <div class="assignment" *ngFor="let item of assignments()">
     <div>

@@ -12,6 +12,7 @@ import { CupType, Location, StockItem, StockMovementType } from '../../core/mode
 import { EventsService } from '../../core/services/events.service';
 import { CashService } from '../../core/services/cash.service';
 import { CashSession } from '../../core/models/cash.model';
+import { filterCupsWithStock } from './movement-form-stock';
 
 @Component({
   selector: 'app-movement-form',
@@ -42,6 +43,9 @@ export class MovementFormComponent {
   readonly error = signal('');
   readonly cashSessions = signal<CashSession[]>([]);
   readonly sourceStock = signal<StockItem[]>([]);
+  readonly sourceStockLoading = signal(false);
+  readonly stockLookupError = signal('');
+  private sourceStockRequest = 0;
   readonly types: StockMovementType[] = [
     'TRANSFER',
     'DELIVERY',
@@ -81,7 +85,11 @@ export class MovementFormComponent {
     this.api.locations(this.eventId).subscribe((value) => this.locations.set(value));
     this.api.cupTypes().subscribe((value) => this.cups.set(value.filter(cup => cup.active && (!cup.ownerEventId || cup.ownerEventId === this.eventId))));
     this.cash.sessions(this.eventId).subscribe((value) => this.cashSessions.set(value.filter((session) => session.status === 'OPEN')));
-    this.form.controls.sourceLocationId.valueChanges.subscribe(() => this.loadSourceStock());
+    this.form.controls.sourceLocationId.valueChanges.subscribe(() => {
+      this.loadSourceStock();
+      if (this.isDelivery())
+        for (const item of this.items.controls) item.get('cupTypeId')?.setValue('');
+    });
     this.form.controls.type.valueChanges.subscribe(() => {
       const type = this.form.controls.type.value;
       this.form.controls.sourceLocationId.setValue('');
@@ -97,15 +105,34 @@ export class MovementFormComponent {
     });
   }
   loadSourceStock() {
+    const request = ++this.sourceStockRequest;
     const locationId = this.form.controls.sourceLocationId.value;
     if (!locationId) {
       this.sourceStock.set([]);
+      this.sourceStockLoading.set(false);
+      this.stockLookupError.set('');
       return;
     }
+    this.sourceStockLoading.set(true);
+    this.stockLookupError.set('');
     this.api.locationStock(this.eventId, locationId).subscribe({
-      next: (result) => this.sourceStock.set(result.items),
-      error: () => this.sourceStock.set([]),
+      next: (result) => {
+        if (request !== this.sourceStockRequest) return;
+        this.sourceStock.set(result.items);
+        this.sourceStockLoading.set(false);
+      },
+      error: () => {
+        if (request !== this.sourceStockRequest) return;
+        this.sourceStock.set([]);
+        this.sourceStockLoading.set(false);
+        this.stockLookupError.set('No se pudo consultar el stock de este origen.');
+      },
     });
+  }
+  availableCups() {
+    if (!this.isDelivery()) return this.cups();
+    if (!this.form.controls.sourceLocationId.value || this.sourceStockLoading()) return [];
+    return filterCupsWithStock(this.cups(), this.sourceStock());
   }
   stockLabel(cupTypeId: string) {
     const values = (['CLEAN', 'DIRTY', 'DAMAGED'] as const).map((condition) =>

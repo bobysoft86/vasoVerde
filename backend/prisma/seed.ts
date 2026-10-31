@@ -2,6 +2,10 @@ import {
   CashMovementType,
   EventRole,
   EventStatus,
+  IncidentKind,
+  IncidentPriority,
+  IncidentStatus,
+  IncidentType,
   GlobalRole,
   LocationType,
   LocationUserRole,
@@ -15,6 +19,62 @@ import { strict as assert } from 'node:assert';
 
 const prisma = new PrismaClient();
 const password = 'Demo1234!';
+
+async function seedIncidentShowcase(companyId: string) {
+  const event = await prisma.event.findUnique({
+    where: { companyId_code: { companyId, code: 'FESTIVAL-2026-001' } },
+  });
+  if (!event) return;
+  const [reporter, responsible, bar] = await Promise.all([
+    prisma.user.findUnique({ where: { companyId_email: { companyId, email: 'trabajador@ecocups.demo' } } }),
+    prisma.user.findUnique({ where: { companyId_email: { companyId, email: 'responsable@ecocups.demo' } } }),
+    prisma.location.findFirst({ where: { companyId, eventId: event.id, type: LocationType.BAR, name: 'Barra Norte 1' } }),
+  ]);
+  if (!reporter || !responsible) return;
+  const fixtures = [
+    {
+      id: 'seed-demo-incident-stock', kind: IncidentKind.INCIDENT, type: IncidentType.STOCK,
+      priority: IncidentPriority.HIGH, status: IncidentStatus.IN_PROGRESS,
+      title: 'Revisar disponibilidad de vasos limpios',
+      description: 'La barra necesita reponer vasos limpios antes del siguiente turno.',
+      locationId: bar?.id ?? null, assignedToUserId: responsible.id, createdByUserId: reporter.id,
+      comment: 'Estoy comprobando el stock del almacén del evento.',
+    },
+    {
+      id: 'seed-demo-incident-cash', kind: IncidentKind.INCIDENT, type: IncidentType.CASH,
+      priority: IncidentPriority.URGENT, status: IncidentStatus.OPEN,
+      title: 'Confirmar arqueo de la barra',
+      description: 'Pendiente de revisar el cierre y confirmar la liquidación.',
+      locationId: bar?.id ?? null, assignedToUserId: responsible.id, createdByUserId: reporter.id,
+      comment: 'Aviso registrado para que lo revise el responsable.',
+    },
+    {
+      id: 'seed-demo-notice-shift', kind: IncidentKind.NOTICE, type: IncidentType.OPERATIONAL,
+      priority: IncidentPriority.NORMAL, status: IncidentStatus.OPEN,
+      title: 'Aviso: cambio de turno a las 18:00',
+      description: 'Dejar anotado el inventario de vasos antes de entregar el puesto.',
+      locationId: bar?.id ?? null, assignedToUserId: responsible.id, createdByUserId: reporter.id,
+      comment: 'Visible para el equipo del evento.',
+    },
+  ];
+  for (const fixture of fixtures) {
+    await prisma.incident.upsert({
+      where: { id: fixture.id },
+      update: {},
+      create: {
+        id: fixture.id, companyId, eventId: event.id, locationId: fixture.locationId,
+        createdByUserId: fixture.createdByUserId, assignedToUserId: fixture.assignedToUserId,
+        kind: fixture.kind, type: fixture.type, priority: fixture.priority,
+        status: fixture.status, title: fixture.title, description: fixture.description,
+      },
+    });
+    await prisma.incidentComment.upsert({
+      where: { id: `${fixture.id}-comment` },
+      update: {},
+      create: { id: `${fixture.id}-comment`, incidentId: fixture.id, userId: reporter.id, message: fixture.comment },
+    });
+  }
+}
 
 // Keep the seed executable in the production runtime image, which contains
 // compiled dist/ but intentionally does not include backend/src/.
@@ -71,7 +131,8 @@ async function main() {
       prisma.documentSequence.count({ where }),
     ]);
     if (operations.some((count) => count > 0)) {
-      console.log('Seed omitido: la empresa demo ya contiene datos operativos.');
+      await seedIncidentShowcase(existingCompany.id);
+      console.log('Operaciones demo existentes conservadas; avisos e incidencias de ejemplo añadidos si faltaban.');
       return;
     }
   }
@@ -270,6 +331,8 @@ async function main() {
     update: {}, create: { companyId: company.id, eventId: event.id, documentType: 'DELIVERY_NOTE', nextValue: 3 },
   });
 
+  await seedIncidentShowcase(company.id);
+
   const repeatEvent = await prisma.event.upsert({
     where: { companyId_code: { companyId: company.id, code: 'FESTIVAL-2027-001' } },
     update: {},
@@ -296,6 +359,7 @@ async function main() {
     }
   }
   console.log('Serigrafías: Festival 2026 (780 limpios en nave, 20 en lavado, 200 en evento); Festival 2027 (1000 limpios en nave). Los genéricos son compartidos.');
+  console.log('Escenario del dashboard: liquidación estimada por barra con 200 € anticipados y 300 € pendientes; avisos e incidencias con seguimiento.');
   console.log(`Seed completado: ${company.name} · ${event.name}`);
   console.log(`Usuarios demo: admin@ecocups.demo, responsable@ecocups.demo, trabajador@ecocups.demo, cliente@ecocups.demo · contraseña: ${password}`);
   console.log('Escenario: nave con 1.000 €, fondo de barra de 100 €, segunda entrega cobrada de 200 € y recogida externa sin bloqueo de stock.');

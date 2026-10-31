@@ -53,6 +53,31 @@ export interface EventDashboard {
     differences: number;
     sessions: { available: boolean; open: number; closed: number };
   } | null;
+  barSettlements: {
+    totals: {
+      missingAmount: number;
+      prepaidAmount: number;
+      paidAmount: number;
+      dueAmount: number;
+      refundDue: number;
+      confirmed: number;
+      pending: number;
+    };
+    items: Array<{
+      locationId: string;
+      name: string;
+      active: boolean;
+      status: 'CONFIRMED' | 'PENDING' | 'UNSETTLED' | 'IN_PROGRESS';
+      totalDelivered: number;
+      totalCollected: number;
+      missingAmount: number;
+      prepaidAmount: number;
+      balanceAmount: number;
+      paidAmount: number;
+      dueAmount: number;
+      refundDue: number;
+    }>;
+  } | null;
   alerts: Array<{
     type: string;
     severity: string;

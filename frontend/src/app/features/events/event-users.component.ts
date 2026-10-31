@@ -6,8 +6,10 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
+import { MatIconModule } from '@angular/material/icon';
 import { UsersService } from '../../core/services/users.service';
 import { AppUser } from '../../core/models/auth.model';
+import { QuickUserCreateComponent } from '../../shared/quick-user-create.component';
 
 interface Assignment {
   userId: string;
@@ -23,6 +25,8 @@ interface Assignment {
     MatCardModule,
     MatFormFieldModule,
     MatSelectModule,
+    MatIconModule,
+    QuickUserCreateComponent,
   ],
   templateUrl: './event-users.component.html',
   styleUrl: './event-users.component.scss',
@@ -31,9 +35,10 @@ export class EventUsersComponent {
   private readonly api = inject(UsersService);
   private readonly route = inject(ActivatedRoute);
   private readonly fb = inject(FormBuilder);
-  private readonly eventId = this.route.parent?.snapshot.paramMap.get('eventId') ?? '';
+  readonly eventId = this.route.parent?.snapshot.paramMap.get('eventId') ?? '';
   readonly assignments = signal<Assignment[]>([]);
   readonly users = signal<AppUser[]>([]);
+  readonly showCreate = signal(false);
   readonly form = this.fb.nonNullable.group({
     userId: ['', Validators.required],
     role: ['OPERATOR', Validators.required],
@@ -55,6 +60,11 @@ export class EventUsersComponent {
     this.api
       .assignments(this.eventId)
       .subscribe({ next: (value) => this.assignments.set(value as Assignment[]) });
+  }
+  onUserCreated(user: AppUser) {
+    this.users.update((users) => [user, ...users]);
+    this.showCreate.set(false);
+    this.load();
   }
   assign() {
     if (this.form.invalid) return;

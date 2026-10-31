@@ -12,12 +12,14 @@ import {
   LocationUserRole,
   Prisma,
 } from '@prisma/client';
+import * as argon2 from 'argon2';
 import { balanceFor } from '../stock/stock-ledger';
 import { PrismaService } from '../prisma/prisma.service';
 import { LocationsService } from '../locations/locations.service';
 import { AssignEventUserDto } from './dto/assign-event-user.dto';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
+import { QuickCreateEventUserDto } from './dto/quick-create-event-user.dto';
 import { AuthUser } from '../common/types/auth-request';
 
 @Injectable()
@@ -281,6 +283,30 @@ export class EventsService {
     return this.prisma.eventUser.create({
       data: { eventId, userId: dto.userId, role: dto.role },
       select: { userId: true, role: true, assignedAt: true },
+    });
+  }
+  async quickCreateEventUser(user: AuthUser, eventId: string, dto: QuickCreateEventUserDto) {
+    await this.assertManager(user, eventId);
+    const email = dto.email.trim().toLowerCase();
+    const exists = await this.prisma.user.findFirst({ where: { companyId: user.companyId, email } });
+    if (exists) throw new ConflictException('Ya existe un usuario con este correo electrónico');
+    const passwordHash = await argon2.hash(dto.password);
+    return this.prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          companyId: user.companyId,
+          name: dto.name.trim(),
+          email,
+          passwordHash,
+          phone: dto.phone?.trim() || undefined,
+          globalRole: dto.globalRole ?? GlobalRole.USER,
+        },
+        select: { id: true, name: true, email: true, phone: true, active: true, globalRole: true },
+      });
+      await tx.eventUser.create({
+        data: { eventId, userId: created.id, role: dto.eventRole ?? EventRole.OPERATOR },
+      });
+      return created;
     });
   }
   async updateUser(

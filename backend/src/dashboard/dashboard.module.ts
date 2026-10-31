@@ -6,9 +6,10 @@ import { EventAccessGuard } from '../common/guards/event-access.guard';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { DashboardController } from './dashboard.controller';
 import { DashboardService } from './dashboard.service';
+import { CashModule } from '../cash/cash.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, EventsModule],
+  imports: [PrismaModule, AuthModule, EventsModule, CashModule],
   controllers: [DashboardController],
   providers: [DashboardService, EventAccessGuard, JwtAuthGuard],
 })

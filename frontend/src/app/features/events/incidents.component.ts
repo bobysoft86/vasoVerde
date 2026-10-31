@@ -8,10 +8,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { AuthService } from '../../core/services/auth.service';
 import { EventsService } from '../../core/services/events.service';
 import { IncidentItem, Location } from '../../core/models/event.model';
+import { QuickUserCreateComponent } from '../../shared/quick-user-create.component';
 
 @Component({
   selector: 'app-incidents',
-  imports: [CommonModule, FormsModule, MatButtonModule, MatCardModule, MatIconModule],
+  imports: [CommonModule, FormsModule, MatButtonModule, MatCardModule, MatIconModule, QuickUserCreateComponent],
   templateUrl: './incidents.component.html',
   styleUrl: './incidents.component.scss',
 })
@@ -28,6 +29,7 @@ export class IncidentsComponent {
   readonly success = signal('');
   readonly isManager = signal(false);
   readonly showForm = signal(false);
+  readonly quickCreateFor = signal<string | null>(null);
   readonly kindFilter = signal('ALL');
   readonly draft = signal({ kind: 'INCIDENT', type: 'OPERATIONAL', priority: 'NORMAL', title: '', description: '', locationId: '' });
   readonly comments = signal<Record<string, string>>({});
@@ -81,6 +83,11 @@ export class IncidentsComponent {
 
   update(item: IncidentItem, data: Record<string, string | null>) {
     this.api.updateIncident(this.eventId, item.id, data).subscribe({ next: () => this.reload(), error: () => this.error.set('No se pudo actualizar. Solo los responsables pueden cambiar la gestión.') });
+  }
+  onAssigneeCreated(item: IncidentItem, user: { id: string; name: string }) {
+    this.assignees.update((users) => [user, ...users]);
+    this.quickCreateFor.set(null);
+    this.update(item, { assignedToUserId: user.id });
   }
 
   addComment(item: IncidentItem) {

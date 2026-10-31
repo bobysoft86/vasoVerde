@@ -70,6 +70,8 @@
       <label>Prioridad<select [ngModel]="item.priority" (ngModelChange)="update(item, { priority: $event })" [name]="'priority-' + item.id"><option value="NORMAL">Normal</option><option value="HIGH">Alta</option><option value="URGENT">Urgente</option></select></label>
       <label>Responsable<select [ngModel]="item.assignedTo?.id || ''" (ngModelChange)="update(item, { assignedToUserId: $event })" [name]="'assignee-' + item.id"><option value="">Sin asignar</option><option *ngFor="let person of assignees()" [value]="person.id">{{ person.name }}</option></select></label>
     </div>
+    <button mat-button *ngIf="isManager()" type="button" (click)="quickCreateFor.set(quickCreateFor() === item.id ? null : item.id)"><mat-icon>person_add</mat-icon>Crear responsable</button>
+    <app-quick-user-create *ngIf="isManager() && quickCreateFor() === item.id" [eventId]="eventId" [globalRole]="'USER'" [eventRole]="'OPERATOR'" (created)="onAssigneeCreated(item, $event)" (cancelled)="quickCreateFor.set(null)" />
 
     <div class="timeline" *ngIf="item.comments.length">
       <h3>Seguimiento <span>{{ item.comments.length }}</span></h3>

@@ -1,0 +1,10 @@
+.quick-user-card { margin: 8px 0 14px; padding: 16px; border: 1px solid #dce9df; background: #f9fcfa; box-shadow: none !important; }
+.quick-user-heading, .quick-user-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.quick-user-heading h3 { margin: 0; color: #2c533a; font-size: 14px; }
+.quick-user-heading p { margin: 4px 0 0; color: #78877e; font-size: 11px; }
+.quick-user-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; margin-top: 12px; }
+.quick-user-fields mat-form-field { width: 100%; }
+.quick-user-actions { justify-content: flex-end; }
+.quick-user-actions button:last-child { white-space: nowrap; }
+.quick-user-error { color: #a13d31; font-size: 11px; }
+@media (max-width: 650px) { .quick-user-fields { grid-template-columns: 1fr; } .quick-user-actions { align-items: stretch; flex-direction: column-reverse; } }

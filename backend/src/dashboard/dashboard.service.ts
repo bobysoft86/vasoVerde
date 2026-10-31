@@ -13,6 +13,7 @@ import {
 import { EventsService } from '../events/events.service';
 import { AuthUser } from '../common/types/auth-request';
 import { PrismaService } from '../prisma/prisma.service';
+import { CashService } from '../cash/cash.service';
 
 type Balance = Map<string, number>;
 type Movement = {
@@ -36,6 +37,7 @@ export class DashboardService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly events: EventsService,
+    private readonly cashService: CashService,
   ) {}
 
   private isAdmin(user: AuthUser) {
@@ -389,6 +391,12 @@ export class DashboardService {
           select: { role: true },
         })
       )?.role === EventRole.EVENT_MANAGER;
+    const [cash, barSettlements] = financial
+      ? await Promise.all([
+          this.cash(user.companyId, eventId, this.range(query)),
+          this.cashService.barSettlementReport(user, eventId),
+        ])
+      : [null, null];
     return {
       event: {
         id: event.id,
@@ -429,9 +437,8 @@ export class DashboardService {
             ),
           })),
       },
-      cash: financial
-        ? await this.cash(user.companyId, eventId, this.range(query))
-        : null,
+      cash,
+      barSettlements,
       alerts,
       recentActivity,
       incidents,

@@ -12,5 +12,6 @@ import { CashService } from './cash.service';
   imports: [PrismaModule, AuthModule, EventsModule, StockModule],
   controllers: [CashController, CentralCashController],
   providers: [CashService, EventAccessGuard, JwtAuthGuard],
+  exports: [CashService],
 })
 export class CashModule {}

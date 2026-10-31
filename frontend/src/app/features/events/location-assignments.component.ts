@@ -6,8 +6,10 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
+import { MatIconModule } from '@angular/material/icon';
 import { EventsService } from '../../core/services/events.service';
 import { Location } from '../../core/models/event.model';
+import { QuickUserCreateComponent } from '../../shared/quick-user-create.component';
 
 type Assignment = {
   id: string;
@@ -26,6 +28,8 @@ type Assignment = {
     MatCardModule,
     MatFormFieldModule,
     MatSelectModule,
+    MatIconModule,
+    QuickUserCreateComponent,
   ],
   templateUrl: './location-assignments.component.html',
   styleUrl: './location-assignments.component.scss',
@@ -33,12 +37,13 @@ type Assignment = {
 export class LocationAssignmentsComponent {
   private readonly api = inject(EventsService);
   private readonly route = inject(ActivatedRoute);
-  private readonly eventId = this.route.parent?.snapshot.paramMap.get('eventId') ?? '';
+  readonly eventId = this.route.parent?.snapshot.paramMap.get('eventId') ?? '';
   readonly locations = signal<Location[]>([]);
   readonly users = signal<
     Array<{ id: string; name: string; email: string; active: boolean; globalRole: string }>
   >([]);
   readonly assignments = signal<Assignment[]>([]);
+  readonly showCreate = signal(false);
   readonly error = signal('');
   locationId = '';
   userId = '';
@@ -93,6 +98,15 @@ export class LocationAssignmentsComponent {
         next: () => this.loadAssignments(),
         error: (err) => this.error.set(err?.error?.message || 'No se pudo asignar el usuario.'),
       });
+  }
+  onUserCreated(user: { id: string; name: string; email: string; active: boolean; globalRole: string }) {
+    this.users.update((users) => [user, ...users]);
+    this.userId = user.id;
+    this.showCreate.set(false);
+    this.assign();
+  }
+  eventRoleForLocation() {
+    return this.role === 'RESPONSIBLE' ? 'EVENT_MANAGER' : this.role === 'CLIENT' ? 'VIEWER' : 'OPERATOR';
   }
   remove(userId: string) {
     this.api

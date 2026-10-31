@@ -19,6 +19,7 @@ import { AssignEventUserDto } from './dto/assign-event-user.dto';
 import { AssignLocationUserDto } from './dto/assign-location-user.dto';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
+import { QuickCreateEventUserDto } from './dto/quick-create-event-user.dto';
 import { EventStatus } from '@prisma/client';
 
 @ApiTags('events')
@@ -83,6 +84,13 @@ export class EventsController {
     @Body() dto: AssignEventUserDto,
   ) {
     return this.events.assign(req.user, eventId, dto);
+  }
+  @Post(':eventId/users/quick-create') quickCreateUser(
+    @Req() req: AuthenticatedRequest,
+    @Param('eventId') eventId: string,
+    @Body() dto: QuickCreateEventUserDto,
+  ) {
+    return this.events.quickCreateEventUser(req.user, eventId, dto);
   }
   @Patch(':eventId/users/:userId') @UseGuards(EventAccessGuard) update(
     @Req() req: AuthenticatedRequest,

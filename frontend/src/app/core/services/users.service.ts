@@ -13,6 +13,9 @@ export class UsersService {
   create(data: unknown) {
     return this.http.post<AppUser>(`${this.url}/users`, data);
   }
+  createForEvent(eventId: string, data: unknown) {
+    return this.http.post<AppUser>(`${this.url}/events/${eventId}/users/quick-create`, data);
+  }
   update(id: string, data: unknown) {
     return this.http.patch<AppUser>(`${this.url}/users/${id}`, data);
   }

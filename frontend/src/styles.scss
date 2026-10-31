@@ -22,3 +22,20 @@ mat-icon { font-family: 'Material Icons', sans-serif; font-weight: normal; font-
 button mat-icon, a mat-icon { vertical-align: middle; }
 .mat-mdc-unelevated-button, .mat-mdc-outlined-button, .mat-mdc-button { letter-spacing: .01em; }
 .mat-mdc-card { border-radius: 14px !important; }
+
+app-warehouse .type-stock-card { margin-bottom: 13px; padding: 18px; border: 1px solid #e7eee9; box-shadow: 0 2px 8px #20382b08 !important; }
+app-warehouse .type-stock-card .section-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; }
+app-warehouse .type-stock-card .section-heading .eyebrow { margin: 0 0 4px; }
+app-warehouse .type-stock-card .section-heading h2 { margin: 0; font-size: 15px; }
+app-warehouse .type-stock-card .section-heading > span { color: #849188; font-size: 10px; }
+app-warehouse .type-stock-scroll { overflow-x: auto; }
+app-warehouse .type-stock-table { width: 100%; border-collapse: collapse; min-width: 560px; text-align: right; }
+app-warehouse .type-stock-table th { padding: 9px 12px; background: #f6f8f6; color: #75847a; font-size: 10px; font-weight: 650; }
+app-warehouse .type-stock-table th:first-child, app-warehouse .type-stock-table td:first-child { text-align: left; }
+app-warehouse .type-stock-table td { padding: 10px 12px; border-bottom: 1px solid #edf1ee; color: #53665a; font-size: 11px; }
+app-warehouse .type-stock-table td:first-child { display: table-cell; }
+app-warehouse .type-stock-table td small { display: block; margin-top: 3px; color: #94a097; font-size: 9px; }
+app-warehouse .type-stock-table .cup-name { color: #354a3c; font-weight: 600; }
+app-warehouse .type-stock-table td strong { color: #2f4c39; }
+app-warehouse .type-stock-table .type-stock-total td { border-top: 1px solid #dfe8e1; border-bottom: 0; background: #f7faf7; color: #435a49; font-weight: 700; }
+@media (max-width: 600px) { app-warehouse .type-stock-card { padding: 14px; } }

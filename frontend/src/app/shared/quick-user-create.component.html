@@ -1,0 +1,13 @@
+<mat-card class="quick-user-card">
+  <div class="quick-user-heading"><div><h3>Crear usuario para este evento</h3><p>Se añadirá al evento y quedará disponible para asignarlo.</p></div><button mat-icon-button type="button" aria-label="Cerrar" (click)="cancelled.emit()"><mat-icon>close</mat-icon></button></div>
+  <form (ngSubmit)="submit()">
+    <div class="quick-user-fields">
+      <mat-form-field appearance="outline"><mat-label>Nombre</mat-label><input matInput name="quickName" [(ngModel)]="name" required minlength="2" maxlength="120" /></mat-form-field>
+      <mat-form-field appearance="outline"><mat-label>Correo electrónico</mat-label><input matInput type="email" name="quickEmail" [(ngModel)]="email" required email maxlength="254" /></mat-form-field>
+      <mat-form-field appearance="outline"><mat-label>Contraseña inicial</mat-label><input matInput type="password" name="quickPassword" [(ngModel)]="password" required minlength="8" autocomplete="new-password" /><mat-hint>Mínimo 8 caracteres</mat-hint></mat-form-field>
+      <mat-form-field appearance="outline"><mat-label>Teléfono (opcional)</mat-label><input matInput type="tel" name="quickPhone" [(ngModel)]="phone" maxlength="40" /></mat-form-field>
+    </div>
+    <p class="quick-user-error" *ngIf="error()">{{ error() }}</p>
+    <div class="quick-user-actions"><button mat-button type="button" (click)="cancelled.emit()">Cancelar</button><button mat-flat-button color="primary" type="submit" [disabled]="saving() || name.trim().length < 2 || !email.trim() || password.length < 8"><mat-icon>person_add</mat-icon>{{ saving() ? 'Creando…' : 'Crear y añadir al evento' }}</button></div>
+  </form>
+</mat-card>

@@ -51,7 +51,11 @@
         <mat-form-field appearance="outline"
           ><mat-label>Tipo de vaso</mat-label
           ><mat-select formControlName="cupTypeId"
-            ><mat-option *ngFor="let cup of cups()" [value]="cup.id">{{
+            ><mat-option disabled *ngIf="isDelivery() && !form.controls.sourceLocationId.value">Selecciona primero el origen</mat-option>
+            <mat-option disabled *ngIf="isDelivery() && form.controls.sourceLocationId.value && sourceStockLoading()">Consultando stock…</mat-option>
+            <mat-option disabled *ngIf="isDelivery() && form.controls.sourceLocationId.value && !sourceStockLoading() && !stockLookupError() && !availableCups().length">No hay tipos de vaso en stock en este origen</mat-option>
+            <mat-option disabled *ngIf="isDelivery() && stockLookupError()">{{ stockLookupError() }}</mat-option>
+            <mat-option *ngFor="let cup of availableCups()" [value]="cup.id">{{
               (cup.displayName || cup.name)
             }} · {{ stockLabel(cup.id) }}</mat-option></mat-select
           ></mat-form-field

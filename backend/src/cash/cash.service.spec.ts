@@ -387,4 +387,37 @@ describe('CashService transaction invariants', () => {
     expect(tx.stockMovement.create).not.toHaveBeenCalled();
     expect(tx.cashMovement.create).not.toHaveBeenCalled();
   });
+
+  it('reports per-bar paid, pending and refund amounts for the event dashboard', async () => {
+    prisma.location = {
+      findMany: jest.fn().mockResolvedValue([
+        { id: 'bar-north', name: 'Barra Norte', active: true },
+        { id: 'bar-south', name: 'Barra Sur', active: true },
+      ]),
+    };
+    prisma.barSettlement = {
+      findMany: jest.fn().mockResolvedValue([
+        {
+          locationId: 'bar-north', status: 'PENDING', totalDelivered: 50, totalCollected: 0,
+          missingAmount: 100, prepaidAmount: 40, balanceAmount: 60, cashMovement: null,
+        },
+        {
+          locationId: 'bar-south', status: 'CONFIRMED', totalDelivered: 50, totalCollected: 0,
+          missingAmount: 100, prepaidAmount: 40, balanceAmount: 60,
+          cashMovement: { type: CashMovementType.COLLECTION, amount: 60 },
+        },
+      ]),
+    };
+    prisma.locationClosure = { findMany: jest.fn().mockResolvedValue([]) };
+
+    const report = await service.barSettlementReport(user, 'event');
+    expect(report.totals).toEqual({
+      missingAmount: 200, prepaidAmount: 80, paidAmount: 140,
+      dueAmount: 60, refundDue: 0, confirmed: 1, pending: 1,
+    });
+    expect(report.items.map((item) => [item.name, item.status, item.paidAmount, item.dueAmount])).toEqual([
+      ['Barra Norte', 'PENDING', 40, 60],
+      ['Barra Sur', 'CONFIRMED', 100, 0],
+    ]);
+  });
 });

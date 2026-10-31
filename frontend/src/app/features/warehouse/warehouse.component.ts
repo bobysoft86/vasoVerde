@@ -345,6 +345,39 @@ export class WarehouseComponent {
   locationCupTypes(items: StockItem[]) {
     return new Set(items.map((item) => item.cupTypeId)).size;
   }
+  cupTypeStock() {
+    const stock = new Map<
+      string,
+      { cupTypeId: string; name: string; code: string; clean: number; dirty: number; damaged: number }
+    >();
+    for (const cup of this.cups()) {
+      stock.set(cup.id, {
+        cupTypeId: cup.id,
+        name: cup.displayName || cup.name,
+        code: cup.code,
+        clean: 0,
+        dirty: 0,
+        damaged: 0,
+      });
+    }
+    for (const item of (this.data()?.locations || []).flatMap((location) => location.items)) {
+      const row = stock.get(item.cupTypeId) ?? {
+        cupTypeId: item.cupTypeId,
+        name: item.cupTypeName,
+        code: '',
+        clean: 0,
+        dirty: 0,
+        damaged: 0,
+      };
+      if (item.condition === 'CLEAN') row.clean += Math.max(0, item.quantity);
+      if (item.condition === 'DIRTY') row.dirty += Math.max(0, item.quantity);
+      if (item.condition === 'DAMAGED') row.damaged += Math.max(0, item.quantity);
+      stock.set(item.cupTypeId, row);
+    }
+    return [...stock.values()]
+      .map((item) => ({ ...item, total: item.clean + item.dirty + item.damaged }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'es'));
+  }
   movementLabel(type: string) {
     return ({
       INITIAL_LOAD: 'Recepción de fábrica', DELIVERY: 'Entrega a evento', RETURN: 'Devolución',

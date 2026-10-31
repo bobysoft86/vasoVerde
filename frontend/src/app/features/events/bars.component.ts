@@ -11,6 +11,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { EventsService } from '../../core/services/events.service';
 import { UsersService } from '../../core/services/users.service';
 import { Bar, Booth } from '../../core/models/event.model';
+import { QuickUserCreateComponent } from '../../shared/quick-user-create.component';
 
 @Component({
   selector: 'app-bars',
@@ -23,6 +24,7 @@ import { Bar, Booth } from '../../core/models/event.model';
     MatInputModule,
     MatIconModule,
     MatSelectModule,
+    QuickUserCreateComponent,
   ],
   templateUrl: './bars.component.html',
   styleUrl: './bars.component.scss',
@@ -37,7 +39,8 @@ export class BarsComponent {
   readonly clients = signal<Array<{ id: string; name: string; email: string }>>([]);
   readonly loading = signal(true);
   readonly showForm = signal(false);
-  private readonly eventId = this.route.parent?.snapshot.paramMap.get('eventId') ?? '';
+  readonly showQuickClient = signal(false);
+  readonly eventId = this.route.parent?.snapshot.paramMap.get('eventId') ?? '';
   readonly form = this.fb.nonNullable.group({
     name: ['', Validators.required],
     code: ['', Validators.required],
@@ -67,5 +70,10 @@ export class BarsComponent {
       this.showForm.set(false);
       this.load();
     });
+  }
+  onClientCreated(user: { id: string; name: string; email: string }) {
+    this.clients.update((clients) => [user, ...clients]);
+    this.form.controls.clientUserId.setValue(user.id);
+    this.showQuickClient.set(false);
   }
 }
